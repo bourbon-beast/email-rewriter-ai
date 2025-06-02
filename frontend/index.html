@@ -7,6 +7,52 @@
     body { font-family: sans-serif; margin: 2rem; }
     textarea, select, button { width: 100%; margin-top: 1rem; font-size: 1rem; }
     #output { margin-top: 2rem; white-space: pre-wrap; background: #f9f9f9; padding: 1rem; }
+
+    /* Styles for Rewrite History Explorer */
+    #historyExplorer {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #ccc;
+    }
+
+    #historyDropdownContainer label {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    #historySelect {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box; /* Ensures padding doesn't add to width */
+    }
+
+    #historyItemDisplay {
+      background-color: #f9f9f9;
+      padding: 1rem;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      white-space: pre-wrap; /* Ensures pre-like formatting for contained text */
+    }
+
+    #historyItemDisplay strong {
+      font-weight: bold;
+      display: block; /* Makes labels appear on their own line */
+      margin-top: 0.5rem;
+      margin-bottom: 0.25rem;
+    }
+
+    #historyItemDisplay pre {
+      background-color: #fff; /* Slightly different background for pre-formatted content */
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+      white-space: pre-wrap; /* Ensure wrapping and preservation of newlines */
+      word-wrap: break-word; /* Ensure long words break and wrap */
+    }
   </style>
 </head>
 <body>
@@ -36,8 +82,105 @@
 <button onclick="suggestPrompt()">Review History & Suggest Prompt</button>
 <pre id="suggestedPrompt" style="white-space: pre-wrap; margin-top: 1rem;"></pre>
 
+<div id="historyExplorer">
+  <h2>Rewrite History Explorer</h2>
+  <div id="historyDropdownContainer">
+    <p id="historyLoadingMessage">Loading history...</p>
+    <label for="historySelect" style="display: none;">Select a history entry:</label>
+    <select id="historySelect" style="display: none;"></select>
+  </div>
+  <div id="historyItemDisplay">
+    <!-- Selected history item details will be shown here -->
+  </div>
+</div>
 
   <script>
+    let completeRewriteHistory = [];
+
+    async function loadRewriteHistory() {
+      const loadingMessage = document.getElementById('historyLoadingMessage');
+      const historySelectLabel = document.querySelector('#historyDropdownContainer label[for="historySelect"]');
+      const historySelect = document.getElementById('historySelect');
+
+      // Show loading message and hide dropdown initially
+      loadingMessage.style.display = 'block';
+      historySelectLabel.style.display = 'none';
+      historySelect.style.display = 'none';
+
+      try {
+        const response = await fetch('http://127.0.0.1:8000/history');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        completeRewriteHistory = await response.json();
+        console.log('Rewrite history loaded:', completeRewriteHistory);
+
+        const historySelect = document.getElementById('historySelect');
+        historySelect.innerHTML = ''; // Clear existing options
+
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = '-- Select an entry --';
+        defaultOption.disabled = true; // Make it non-selectable
+        defaultOption.selected = true; // Make it selected by default
+        historySelect.appendChild(defaultOption);
+
+        completeRewriteHistory.forEach((item, index) => {
+          const option = document.createElement('option');
+          option.textContent = item.timestamp; // Assuming item has a timestamp field
+          option.value = index;
+          historySelect.appendChild(option);
+        });
+
+        // Add event listener for the dropdown
+        historySelect.addEventListener('change', function() {
+          displayHistoryItem(this.value);
+        });
+
+        // Show dropdown and label now that data is loaded
+        historySelectLabel.style.display = 'block';
+        historySelect.style.display = 'block';
+
+      } catch (error) {
+        console.error('Failed to load rewrite history:', error);
+        const historyItemDisplay = document.getElementById('historyItemDisplay');
+        historyItemDisplay.innerHTML = '<p style="color: red;">Error loading history data.</p>';
+      } finally {
+        // Hide loading message
+        loadingMessage.style.display = 'none';
+      }
+    }
+
+    function displayHistoryItem(selectedIndex) {
+      const historyItemDisplay = document.getElementById('historyItemDisplay');
+      historyItemDisplay.innerHTML = ''; // Clear previous content
+
+      if (selectedIndex === "" || selectedIndex === null || isNaN(parseInt(selectedIndex))) {
+        historyItemDisplay.innerHTML = '<p>Please select an entry to view its details.</p>';
+        return;
+      }
+
+      const index = parseInt(selectedIndex);
+      const item = completeRewriteHistory[index];
+
+      if (item) {
+        let htmlContent = '<ul>';
+        htmlContent += `<li><strong>Timestamp:</strong> <pre>${item.timestamp || 'N/A'}</pre></li>`;
+        htmlContent += `<li><strong>Original Email:</strong> <pre>${item.original_email || 'N/A'}</pre></li>`;
+        htmlContent += `<li><strong>Tone:</strong> <pre>${item.tone || 'N/A'}</pre></li>`;
+        htmlContent += `<li><strong>Final Prompt:</strong> <pre>${item.final_prompt || 'N/A'}</pre></li>`;
+        htmlContent += `<li><strong>Gemini Response:</strong> <pre>${item.gemini_response || 'N/A'}</pre></li>`;
+        // Assuming user_feedback might be null or not present initially
+        htmlContent += `<li><strong>User Feedback:</strong> <pre>${item.user_feedback !== undefined && item.user_feedback !== null ? item.user_feedback : 'N/A'}</pre></li>`;
+        htmlContent += '</ul>';
+        historyItemDisplay.innerHTML = htmlContent;
+      } else {
+        historyItemDisplay.innerHTML = '<p style="color: red;">Error: Could not find the selected history item.</p>';
+      }
+    }
+
+    window.onload = loadRewriteHistory;
+
     async function rewriteEmail() {
       const email = document.getElementById('email').value;
       const tone = document.getElementById('tone').value;
