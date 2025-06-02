@@ -238,20 +238,37 @@ async def analyse_prompt(): # Removed req: PromptAnalysisRequest
         # This is a simplified version for now, will be expanded
         gpt4_prompt = f"""{BRAND_TONE_GUIDANCE}
 
-The following are recent examples of email rewrites by another AI (Gemini), grouped by the requested tone.
-We want to analyze how effective the prompts given to Gemini were in achieving the desired tone and outcome,
+The following are recent examples of email rewrites by another AI (Gemini), grouped by the requested tone.  
+We want to analyze how effective the prompts given to Gemini were in achieving the desired tone and outcome,  
 and how we can improve our overall system prompt or per-tone instructions.
 
 {examples_by_tone_str}
 
 --- Analysis Task for GPT-4 ---
 Based on the provided brand guidance and the examples:
+
 1. For each tone, analyze the effectiveness of the prompts used for Gemini. Were the Gemini responses aligned with the requested tone and brand guidance?
 2. Suggest specific improvements to the main `BRAND_TONE_GUIDANCE` to make it more effective.
 3. Suggest specific per-tone instructions or modifications that could be added to the prompt for Gemini to improve results for each tone.
-4. Provide a single, revised, complete system prompt (incorporating the updated `BRAND_TONE_GUIDANCE` and any per-tone advice) as a single block of text. This revised prompt should be what we use in the future for Gemini.
+4. Provide a single, revised, complete system prompt that incorporates all improvements and is ready to use immediately with Gemini (no placeholders).
 
-Please provide your analysis and the revised system prompt.
+Return your response as **valid JSON** with these exact keys and structure:
+
+{{
+    "overall_summary": "Brief overview of prompt effectiveness across all rewrites",
+    "tone_effectiveness": {{
+        "professional": "Analysis of professional tone effectiveness",
+        "friendly": "Analysis of friendly tone effectiveness", 
+        "concise": "Analysis of concise tone effectiveness",
+        "action-oriented": "Analysis of action-oriented tone effectiveness"
+    }},
+    "improvement_suggestions": "Specific suggestions for improving the current prompt structure",
+    "revised_prompt": "A complete, ready-to-use system prompt with no placeholders that incorporates all improvements"
+}}
+
+**Important:**  
+- Return only a valid JSON object.  
+- Do not include any markdown formatting, explanations, or surrounding text.
 """
 
         # Send this prompt to GPT-4 (Step 6 from plan)

@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { rewriteEmail, analysePromptHistory } from './api' // Import analysePromptHistory
-import PromptReviewButton from './PromptReviewButton' // Import PromptReviewButton
-import PromptReviewDisplay from './PromptReviewDisplay' // Import PromptReviewDisplay
-import RewriteHistoryTab from './RewriteHistoryTab'; // Import RewriteHistoryTab
+import { rewriteEmail, analysePromptHistory } from './api'
+import PromptReviewButton from './PromptReviewButton'
+import PromptReviewDisplay from './PromptReviewDisplay'
+import RewriteHistoryTab from './RewriteHistoryTab'
 import './App.css'
 
 const TONES = [
@@ -20,17 +20,17 @@ function App() {
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
 
-  // State for prompt analysis
-  const [promptAnalysisResult, setPromptAnalysisResult] = useState(null)
+  // Updated state for structured prompt analysis
+  const [analysisData, setAnalysisData] = useState(null)
   const [isAnalysing, setIsAnalysing] = useState(false)
   const [analysisError, setAnalysisError] = useState(null)
-  const [activeTab, setActiveTab] = useState('rewriter') // Default tab
+  const [activeTab, setActiveTab] = useState('rewriter')
 
   const handleRestoreFromHistory = (historyItem) => {
     setOriginalEmail(historyItem.original_email || '');
-    setSelectedTone(historyItem.tone || 'professional'); // Default to 'professional' if tone is missing
-    setRewrittenEmail(''); // Clear any previous rewritten email
-    setError(null); // Clear any errors from the rewriter tab
+    setSelectedTone(historyItem.tone || 'professional');
+    setRewrittenEmail('');
+    setError(null);
     setActiveTab('rewriter');
   };
 
@@ -65,21 +65,31 @@ function App() {
   const handleReset = () => {
     setOriginalEmail('')
     setRewrittenEmail('')
-    setError(null) // Clear main form error
-    // Optionally clear analysis results as well, or keep them
-    // setPromptAnalysisResult(null);
-    // setAnalysisError(null);
+    setError(null)
   }
 
   const handleAnalysePrompts = async () => {
     setIsAnalysing(true)
     setAnalysisError(null)
-    setPromptAnalysisResult(null) // Clear previous results
+    setAnalysisData(null)
 
     try {
       const result = await analysePromptHistory()
-      // The 'output' key is based on what the backend /analyse_prompt returns
-      setPromptAnalysisResult(result.output)
+      
+      // Check if we got structured data or old format
+      if (result.overall_summary) {
+        setAnalysisData(result)
+      } else if (result.output) {
+        // Fallback for old format
+        setAnalysisData({
+          overall_summary: result.output,
+          tone_effectiveness: {},
+          improvement_suggestions: '',
+          revised_prompt: ''
+        })
+      } else {
+        setAnalysisData(result)
+      }
     } catch (err) {
       setAnalysisError(err.message || 'Failed to analyse prompts. Please try again.')
       console.error(err)
@@ -222,26 +232,83 @@ function App() {
             <section className="p-6 bg-white rounded-b-lg rounded-tr-lg shadow-md">
               <h2 className="text-2xl font-semibold text-gray-700 mb-4">Prompt Performance Review</h2>
 
-              <h3 className="text-xl font-semibold text-gray-700 mt-6 mb-3">Current System Prompt Analysis</h3>
-              <p className="text-gray-600 mb-4">
-                Analyse the effectiveness of past prompt structures and get suggestions for improvement from GPT-4.
-                This will use the history of all rewrites.
-              </p>
-              <PromptReviewButton
-                onClick={handleAnalysePrompts}
-                isLoading={isAnalysing}
-                error={analysisError}
-              />
-              <PromptReviewDisplay analysisResult={promptAnalysisResult} />
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold text-gray-700 mb-3">Current System Prompt Analysis</h3>
+                <p className="text-gray-600 mb-4">
+                  Analyse the effectiveness of past prompt structures and get suggestions for improvement from GPT-4.
+                  This will use the history of all rewrites.
+                </p>
+                <PromptReviewButton
+                  onClick={handleAnalysePrompts}
+                  isLoading={isAnalysing}
+                  error={analysisError}
+                />
+                
+                {/* Overall Summary */}
+                {analysisData?.overall_summary && (
+                  <div className="mt-6 p-4 border border-gray-300 rounded-md bg-gray-50 shadow-sm">
+                    <h4 className="text-lg font-semibold mb-3 text-gray-800">Overall Analysis</h4>
+                    <div className="whitespace-pre-wrap bg-white p-4 rounded shadow-inner text-sm text-gray-700">
+                      {analysisData.overall_summary}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-              <h3 className="text-xl font-semibold text-gray-700 mt-8 mb-3">Effectiveness Analysis per Tone</h3>
-              <p className="text-gray-500 italic">Detailed per-tone analysis will be displayed here.</p>
+              {/* Effectiveness Analysis per Tone */}
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold text-gray-700 mb-3">Effectiveness Analysis per Tone</h3>
+                {analysisData?.tone_effectiveness && Object.keys(analysisData.tone_effectiveness).length > 0 ? (
+                  <div className="space-y-4">
+                    {TONES.map(tone => (
+                      analysisData.tone_effectiveness[tone.id] && (
+                        <div key={tone.id} className="p-4 border border-gray-300 rounded-md bg-gray-50 shadow-sm">
+                          <h4 className="text-lg font-semibold mb-2 text-gray-800 capitalize">{tone.label} Tone</h4>
+                          <div className="whitespace-pre-wrap bg-white p-3 rounded shadow-inner text-sm text-gray-700">
+                            {analysisData.tone_effectiveness[tone.id]}
+                          </div>
+                        </div>
+                      )
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 italic">Run analysis to see detailed per-tone effectiveness data.</p>
+                )}
+              </div>
 
-              <h3 className="text-xl font-semibold text-gray-700 mt-8 mb-3">Brand Tone Guidance Improvements</h3>
-              <p className="text-gray-500 italic">Suggestions for improving brand tone guidance will appear here.</p>
+              {/* Brand Tone Guidance Improvements */}
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold text-gray-700 mb-3">Brand Tone Guidance Improvements</h3>
+                {analysisData?.improvement_suggestions ? (
+                  <div className="p-4 border border-gray-300 rounded-md bg-gray-50 shadow-sm">
+                    <div className="whitespace-pre-wrap bg-white p-4 rounded shadow-inner text-sm text-gray-700">
+                      {analysisData.improvement_suggestions}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 italic">Suggestions for improving brand tone guidance will appear here after analysis.</p>
+                )}
+              </div>
 
-              <h3 className="text-xl font-semibold text-gray-700 mt-8 mb-3">Per-tone Instructions</h3>
-              <p className="text-gray-500 italic">Editable per-tone instructions will be available here.</p>
+              {/* Revised System Prompt */}
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold text-gray-700 mb-3">Revised System Prompt</h3>
+                {analysisData?.revised_prompt ? (
+                  <div className="p-4 border border-gray-300 rounded-md bg-gray-50 shadow-sm">
+                    <div className="whitespace-pre-wrap bg-white p-4 rounded shadow-inner text-sm text-gray-700 font-mono">
+                      {analysisData.revised_prompt}
+                    </div>
+                    <button 
+                      onClick={() => navigator.clipboard.writeText(analysisData.revised_prompt)}
+                      className="mt-3 px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                    >
+                      Copy Revised Prompt
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 italic">A revised system prompt will be generated after analysis.</p>
+                )}
+              </div>
             </section>
           )}
 
