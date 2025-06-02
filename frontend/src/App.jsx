@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { rewriteEmail, analysePromptHistory } from './api' // Import analysePromptHistory
 import PromptReviewButton from './PromptReviewButton' // Import PromptReviewButton
 import PromptReviewDisplay from './PromptReviewDisplay' // Import PromptReviewDisplay
+import RewriteHistoryTab from './RewriteHistoryTab'; // Import RewriteHistoryTab
 import './App.css'
 
 const TONES = [
@@ -23,6 +24,15 @@ function App() {
   const [promptAnalysisResult, setPromptAnalysisResult] = useState(null)
   const [isAnalysing, setIsAnalysing] = useState(false)
   const [analysisError, setAnalysisError] = useState(null)
+  const [activeTab, setActiveTab] = useState('rewriter') // Default tab
+
+  const handleRestoreFromHistory = (historyItem) => {
+    setOriginalEmail(historyItem.original_email || '');
+    setSelectedTone(historyItem.tone || 'professional'); // Default to 'professional' if tone is missing
+    setRewrittenEmail(''); // Clear any previous rewritten email
+    setError(null); // Clear any errors from the rewriter tab
+    setActiveTab('rewriter');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -85,10 +95,49 @@ function App() {
           <h1 className="text-3xl font-bold text-blue-600 mb-2">✉️ Smart Email Rewriter</h1>
           <p className="text-gray-600">Transform your emails with AI-powered tone adjustments</p>
         </header>
+
+        {/* Tab Navigation */}
+        <nav className="mb-0 border-b-2 border-gray-300">
+          <div className="flex space-x-1 justify-center">
+            <button
+              onClick={() => setActiveTab('rewriter')}
+              className={`px-4 py-3 font-medium text-sm transition-colors rounded-t-lg
+                ${activeTab === 'rewriter'
+                  ? 'bg-white text-blue-600 border-gray-300 border-t-2 border-x-2 -mb-px'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 border-transparent border-b-2'
+                }`}
+            >
+              Email Rewriter
+            </button>
+            <button
+              onClick={() => setActiveTab('promptReview')}
+              className={`px-4 py-3 font-medium text-sm transition-colors rounded-t-lg
+                ${activeTab === 'promptReview'
+                  ? 'bg-white text-blue-600 border-gray-300 border-t-2 border-x-2 -mb-px'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 border-transparent border-b-2'
+                }`}
+            >
+              Prompt Review
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-4 py-3 font-medium text-sm transition-colors rounded-t-lg
+                ${activeTab === 'history'
+                  ? 'bg-white text-blue-600 border-gray-300 border-t-2 border-x-2 -mb-px'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 border-transparent border-b-2'
+                }`}
+            >
+              Rewrite History
+            </button>
+          </div>
+        </nav>
         
-        <main className="bg-white rounded-lg shadow-md p-6">
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6">
+        {/* Tab Content Pane */}
+        <div className="mt-6">
+          {activeTab === 'rewriter' && (
+            <main className="bg-white rounded-b-lg rounded-tr-lg shadow-md p-6">
+              <form onSubmit={handleSubmit}>
+                <div className="mb-6">
               <label htmlFor="originalEmail" className="block text-gray-700 font-medium mb-2">
                 Original Email
               </label>
@@ -166,23 +215,51 @@ function App() {
               </div>
             </div>
           )}
+            </div>
+          )}
+          {/* Closing main and conditional block for 'rewriter' tab */}
         </main>
+        )}
         
-        <section className="mt-8 p-6 bg-white rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold text-gray-700 mb-4">Prompt Performance Review</h2>
-          <p className="text-gray-600 mb-4">
-            Analyse the effectiveness of past prompt structures and get suggestions for improvement from GPT-4.
-            This will use the history of all rewrites.
-          </p>
-          <PromptReviewButton
-            onClick={handleAnalysePrompts}
-            isLoading={isAnalysing}
-            error={analysisError}
-          />
-          <PromptReviewDisplay analysisResult={promptAnalysisResult} />
-        </section>
+        {activeTab === 'promptReview' && (
+          <section className="p-6 bg-white rounded-b-lg rounded-tr-lg shadow-md"> {/* Removed mt-8 */}
+            <h2 className="text-2xl font-semibold text-gray-700 mb-4">Prompt Performance Review</h2>
 
-        <footer className="mt-8 text-center text-gray-500 text-sm">
+            <h3 className="text-xl font-semibold text-gray-700 mt-6 mb-3">Current System Prompt Analysis</h3>
+            <p className="text-gray-600 mb-4">
+              Analyse the effectiveness of past prompt structures and get suggestions for improvement from GPT-4.
+              This will use the history of all rewrites.
+            </p>
+            <PromptReviewButton
+              onClick={handleAnalysePrompts}
+              isLoading={isAnalysing}
+              error={analysisError}
+            />
+            <PromptReviewDisplay analysisResult={promptAnalysisResult} />
+
+            <h3 className="text-xl font-semibold text-gray-700 mt-8 mb-3">Effectiveness Analysis per Tone</h3>
+            {/* Placeholder for content related to per-tone effectiveness */}
+            <p className="text-gray-500 italic">Detailed per-tone analysis will be displayed here.</p>
+
+            <h3 className="text-xl font-semibold text-gray-700 mt-8 mb-3">Brand Tone Guidance Improvements</h3>
+            {/* Placeholder for content related to brand tone guidance */}
+            <p className="text-gray-500 italic">Suggestions for improving brand tone guidance will appear here.</p>
+
+            <h3 className="text-xl font-semibold text-gray-700 mt-8 mb-3">Per-tone Instructions</h3>
+            {/* Placeholder for content related to per-tone instructions */}
+            <p className="text-gray-500 italic">Editable per-tone instructions will be available here.</p>
+
+          </section>
+        )}
+
+        {activeTab === 'history' && (
+          // RewriteHistoryTab's root div will get bg-white, rounded-b-lg, rounded-tr-lg, shadow-md, p-6 from its own structure if needed
+          // For now, let's assume RewriteHistoryTab handles its own padding and background for the content area
+          <RewriteHistoryTab onRestoreFromHistory={handleRestoreFromHistory} />
+        )}
+        </div>
+
+        <footer className="mt-12 text-center text-gray-500 text-sm"> {/* Increased mt for footer */}
           <p>Powered by Google Gemini API & OpenAI GPT-4</p>
         </footer>
       </div>
