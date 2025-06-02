@@ -1,132 +1,130 @@
-# ✉️ Smart Email Rewriter
+# Project README
 
-An AI-powered tool that takes a rough or generic email and rewrites it in different tones—friendly, concise, professional, action-oriented—using Google's Gemini API.
+This project is a web application with a Python backend (Flask and FastAPI options) and a React frontend.
 
-## 🧹 Features
+## Project Structure
 
-* Enter a plain-text email
-* Choose a tone (e.g., Friendly, Concise, Professional, Action-Oriented)
-* Submit to backend via REST API
-* Receive a rewritten version with the same intent but adjusted style
-* Clean, fast, local deployment (React + Python)
+The project is organized into the following main directories:
 
----
+- `backend/`: Contains the Python backend applications (Flask and FastAPI).
+- `frontend/`: Contains the React application built with Vite.
+- `static/`: Contains static assets (CSS, JS), primarily used by the `app_fastapi.py` (FastAPI) application.
+- `templates/`: Contains HTML templates, primarily used by the `app_fastapi.py` (FastAPI) application to serve a simple frontend.
 
-## 🛠️ Tech Stack
+## Getting Started
 
-* **Frontend:** React + Axios + TailwindCSS
-* **Backend:** Python (Flask)
-* **AI Model:** Google Gemini API (`gemini-pro`)
-* **Auth:** API Key (via env)
+### Prerequisites
 
----
+- Python 3.7+
+- Node.js and npm (or yarn)
 
-## 🚀 Setup Instructions
+### Backend Setup
 
-### 1. Clone the Repo
+1.  **Navigate to the backend directory:**
+    ```bash
+    cd backend
+    ```
+2.  **Create and activate a virtual environment (recommended):**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+4.  **Set up environment variables:**
+    Copy `.env.example` to `.env` and update the variables as needed.
+    ```bash
+    cp .env.example .env
+    ```
+5.  **Run the backend server:**
+    The `backend` directory contains two different web server applications:
+    - `app.py`: A Flask application that uses the Google Gemini API to rewrite email content. This application provides the core AI functionality.
+    - `app_fastapi.py`: A FastAPI application that includes a placeholder `/rewrite` endpoint. It also serves a simple HTML page from the `templates` directory and static files from the `static` directory.
 
-```bash
-git clone https://github.com/your-username/email-rewriter-ai.git
-cd email-rewriter-ai
-```
+    **Running the Flask application (`app.py` - with AI features):**
+    To run the Flask application, which provides the email rewriting functionality:
+    ```bash
+    python app.py
+    ```
+    The Flask backend will typically be available at `http://127.0.0.1:5000` (Flask's default port). This is the recommended backend for using the email rewriting functionality.
 
-### 2. Backend Setup (Python + Gemini)
+    **Running the FastAPI application (`app_fastapi.py`):**
+    To run the FastAPI application:
+    ```bash
+    uvicorn app_fastapi:app --reload
+    ```
+    The FastAPI backend will typically be available at `http://127.0.0.1:8000`. Note that its `/rewrite` endpoint currently returns placeholder data and it primarily serves a basic HTML interface using the `templates/` and `static/` directories.
 
-#### Requirements
+### Frontend Setup
 
-* Python 3.9+
-* `pip install -r backend/requirements.txt`
+1.  **Navigate to the frontend directory:**
+    ```bash
+    cd frontend
+    ```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    # or if you prefer yarn
+    # yarn install
+    ```
+3.  **Run the frontend development server:**
+    ```bash
+    npm run dev
+    # or
+    # yarn dev
+    ```
+    The frontend will typically be available at `http://localhost:5173`.
 
-#### Environment Variables
+## Usage
 
-Create a `.env` file in `/backend` (use the provided `.env.example` as a template):
+Once the chosen backend server (preferably `app.py` for the AI features) and the frontend React server (`frontend/`) are running, open your web browser and navigate to the frontend URL (e.g., `http://localhost:5173`).
 
-```env
-GEMINI_API_KEY=your_api_key_here
-```
+The React application (`frontend/`) is designed to interact with one of the backend applications. You may need to verify or adjust the API endpoint configuration within the frontend code (typically in a file like `frontend/src/api.js` or a similar service/configuration file) to ensure it points to the correct backend address and port:
+- For `app.py` (Flask with AI features): `http://127.0.0.1:5000`
+- For `app_fastapi.py` (FastAPI with placeholder): `http://127.0.0.1:8000`
 
-#### Run Backend
+For the email rewriting functionality, ensure the frontend is configured to communicate with `app.py`. The `frontend/src/api.js` file is typically responsible for making the actual HTTP request to the backend's `/rewrite` endpoint.
 
-```bash
-cd backend
-python app.py
-```
+## AI Email Rewriting API (`app.py`)
 
-The backend will be available at http://localhost:5000
+The Flask backend (`app.py`) provides an endpoint for rewriting email content using the Google Gemini API.
 
-### 3. Frontend Setup (React)
+### Endpoint: `/rewrite`
 
-#### Requirements
+-   **Method:** `POST`
+-   **Description:** Accepts an original email and a desired tone, then returns the rewritten email.
+-   **Request Body (JSON):**
+    ```json
+    {
+        "email": "Your original email content here...",
+        "tone": "professional"
+    }
+    ```
+    -   `email` (string, required): The email text to be rewritten.
+    -   `tone` (string, optional, default: "professional"): The desired tone for the rewritten email (e.g., "formal", "casual", "friendly").
+-   **Response Body (JSON):**
+    On success (HTTP 200):
+    ```json
+    {
+        "original": "Your original email content here...",
+        "rewritten": "The rewritten email content by Gemini API...",
+        "tone": "professional"
+    }
+    ```
+    On error (e.g., HTTP 400 for missing email, HTTP 500 for API errors):
+    ```json
+    {
+        "error": "Error message describing the issue"
+    }
+    ```
+-   **Underlying Mechanism:** This endpoint constructs a prompt using the provided email and tone, then calls the Google Gemini Pro model (`gemini-pro`) to generate the rewritten version of the email. The `GEMINI_API_KEY` environment variable must be correctly configured for this to work.
 
-* Node.js 18+
-* Install dependencies from `/frontend` folder
+## Contributing
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+Details on how to contribute to the project will be added here.
 
-The frontend will be available at http://localhost:5173
+## License
 
----
-
-## 🔄 Example Flow
-
-1. User enters:
-
-   ```
-   Dear Customer, your subscription has expired. Please update payment details.
-   ```
-2. Chooses tone: `Friendly`
-3. Gets result:
-
-   ```
-   Hey there! Just a heads-up—your subscription's expired. Update your payment info to keep things rolling. Cheers!
-   ```
-
----
-
-## 📁 Project Structure
-
-```
-/email-rewriter-ai
-├── /frontend         # React app
-│   ├── src/          # React components and logic
-│   ├── public/       # Static assets
-│   └── package.json  # Frontend dependencies
-├── /backend          # Flask app
-│   ├── app.py        # Main Flask application with Gemini API integration
-│   ├── .env.example  # Template for environment variables
-│   └── requirements.txt # Python dependencies
-└── README.md        # Project documentation
-```
-
----
-
-## ✅ Future Enhancements
-
-* Add user authentication
-* Implement email templates
-* Add grammar and spelling checks
-* Support for multiple languages
-* History of previous rewrites
-* Customizable tone settings
-
----
-
-## 📜 License
-
-MIT – free to use and build on.
-
----
-
-## 🤖 Credits
-
-Built using:
-
-* [Google Gemini API](https://ai.google.dev/)
-* [React](https://reactjs.org/)
-* [Flask](https://flask.palletsprojects.com/)
-* [TailwindCSS](https://tailwindcss.com/)
-
+Information about the project's license will be added here. If you plan to use or contribute to this project, please ensure you add an appropriate open-source license file (e.g., MIT, Apache 2.0).
