@@ -27,6 +27,27 @@ export const rewriteEmail = async (email, tone) => {
   }
 };
 
+export const getRewriteHistory = async () => {
+  try {
+    const response = await axios.get(`${BASE_API_URL}/history`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching rewrite history:', error);
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      const errorDetail = error.response.data.detail || error.response.data.error;
+      throw new Error(errorDetail || 'Server error fetching history');
+    } else if (error.request) {
+      // The request was made but no response was received
+      throw new Error('No response from server for history. Please check if the backend is running.');
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      throw new Error('Error setting up request for history: ' + error.message);
+    }
+  }
+};
+
 export const analysePromptHistory = async () => {
   try {
     // Make a POST request to the /analyse_prompt endpoint.
