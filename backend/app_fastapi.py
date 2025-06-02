@@ -2,8 +2,8 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 import requests
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request, status
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -14,7 +14,10 @@ import json
 from datetime import datetime
 import openai
 
+print(f"DEBUG: Current Working Directory: {os.getcwd()}")
+
 LOG_PATH = Path("rewrite_history.json")
+print(f"DEBUG: Resolved LOG_PATH: {LOG_PATH.resolve()}")
 
 def log_rewrite(entry: dict):
     if LOG_PATH.exists():
@@ -130,8 +133,18 @@ async def rewrite_email(email_request: EmailRequest):
 @app.get("/history")
 async def get_history():
     if LOG_PATH.exists():
-        return json.loads(LOG_PATH.read_text(encoding="utf-8"))
-    return []
+        try:
+            history_data = json.loads(LOG_PATH.read_text(encoding="utf-8"))
+            return history_data
+        except Exception as e:
+            # Log the exception server-side for more detailed debugging
+            print(f"ERROR: Failed to read or parse {LOG_PATH}: {e}")
+            # Return a JSON response with an error message and 500 status code
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"error": "Failed to load or parse rewrite_history.json", "details": str(e)}
+            )
+    return [] # If LOG_PATH does not exist, return an empty list as before
 
 @app.post("/analyse_prompt")
 async def analyse_prompt(req: PromptAnalysisRequest):
