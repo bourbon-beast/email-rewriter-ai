@@ -1,0 +1,177 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* App.css - Basic Styles */
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f4f7f6;
+  color: #333;
+}
+
+.App {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  text-align: left; /* Override Vite's center alignment for app content */
+}
+
+.App header {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #2c3e50;
+}
+
+.App header h1 {
+  margin: 0;
+  font-size: 2.5em;
+}
+
+/* Style for ToneSelector */
+#tone-selector { /* ID used in ToneSelector.jsx */
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 1em;
+  margin-left: 5px; /* From the inline style of the label */
+}
+
+/* Style for EmailEditor */
+.App textarea {
+  width: 100%; /* Changed from calc(100% - 20px) as box-sizing is border-box */
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-family: inherit;
+  font-size: 1em;
+  min-height: 120px;
+  box-sizing: border-box;
+}
+
+.App button {
+  padding: 10px 20px;
+  font-size: 1em;
+  color: #fff;
+  background-color: #3498db;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.App button:hover {
+  background-color: #2980b9;
+}
+
+.App button:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+}
+
+/* RewriteResult styling */
+.App h3 { /* "Rewrite Result" heading */
+    margin-top: 0;
+    color: #34495e;
+}
+.App h4 { /* "Original Email:", "Full AI Response:" */
+    margin-bottom: 5px;
+    color: #34495e;
+}
+.App pre {
+    white-space: pre-wrap;
+    word-wrap: break-word; /* Ensure long words break */
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid #ecf0f1;
+    margin-bottom: 15px; /* Added margin for spacing between pre blocks */
+}
+
+/* Error message styling */
+.error-message { /* You'd need to add this class to the error div in App.jsx */
+  color: #c0392b;
+  margin-top: 15px;
+  padding: 12px;
+  border: 1px solid #e74c3c;
+  border-radius: 4px;
+  background-color: #fbeae5;
+}
+
+/* Loading message styling */
+.loading-message { /* You'd need to add this class to the loading p in App.jsx */
+  color: #2980b9;
+  margin-top: 15px;
+  font-style: italic;
+}
+
+/* Horizontal rule for separating sections */
+hr {
+    border: none;
+    border-top: 1px solid #ecf0f1;
+    margin: 40px 0;
+}
+
+/* Placeholder sections styling */
+/* Generic styling for the placeholder divs */
+/* Add a class like .placeholder-section to the root div of PromptReview and HistoryExplorer */
+.placeholder-section h2 {
+    color: #7f8c8d;
+}
+.placeholder-section p {
+    color: #95a5a6;
+}
+.placeholder-section button:disabled,
+.placeholder-section select:disabled {
+    background-color: #ecf0f1;
+    color: #bdc3c7;
+    border-color: #e0e6e8;
+}
