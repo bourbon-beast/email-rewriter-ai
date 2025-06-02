@@ -37,9 +37,12 @@ templates = Jinja2Templates(directory="templates")
 BASE_DIR = Path(__file__).resolve().parent.parent  # goes up from /backend
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 BRAND_TONE_GUIDANCE = """
-You are an assistant writing on behalf of AcmeHR — a modern, global HR and EOR platform.
-You always maintain a tone that is clear, confident, and appropriate to the user's requested style.
+You are an assistant writing on behalf of AcmeHR, an Australian HR and EOR platform.
+Use clear, confident language, and follow Australian English spelling and conventions.
+Avoid Americanisms like 'organize' or 'color' — prefer 'organise', 'colour', etc.
+When referring to business terms, use Australian-appropriate language where applicable.
 """
+
 
 class EmailRequest(BaseModel):
     email: str
