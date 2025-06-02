@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { rewriteEmail } from './api'
+import { rewriteEmail, analysePromptHistory } from './api' // Import analysePromptHistory
+import PromptReviewButton from './PromptReviewButton' // Import PromptReviewButton
+import PromptReviewDisplay from './PromptReviewDisplay' // Import PromptReviewDisplay
 import './App.css'
 
 const TONES = [
@@ -16,6 +18,11 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
+
+  // State for prompt analysis
+  const [promptAnalysisResult, setPromptAnalysisResult] = useState(null)
+  const [isAnalysing, setIsAnalysing] = useState(false)
+  const [analysisError, setAnalysisError] = useState(null)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -48,7 +55,27 @@ function App() {
   const handleReset = () => {
     setOriginalEmail('')
     setRewrittenEmail('')
-    setError(null)
+    setError(null) // Clear main form error
+    // Optionally clear analysis results as well, or keep them
+    // setPromptAnalysisResult(null);
+    // setAnalysisError(null);
+  }
+
+  const handleAnalysePrompts = async () => {
+    setIsAnalysing(true)
+    setAnalysisError(null)
+    setPromptAnalysisResult(null) // Clear previous results
+
+    try {
+      const result = await analysePromptHistory()
+      // The 'output' key is based on what the backend /analyse_prompt returns
+      setPromptAnalysisResult(result.output)
+    } catch (err) {
+      setAnalysisError(err.message || 'Failed to analyse prompts. Please try again.')
+      console.error(err)
+    } finally {
+      setIsAnalysing(false)
+    }
   }
 
   return (
@@ -141,8 +168,22 @@ function App() {
           )}
         </main>
         
+        <section className="mt-8 p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-2xl font-semibold text-gray-700 mb-4">Prompt Performance Review</h2>
+          <p className="text-gray-600 mb-4">
+            Analyse the effectiveness of past prompt structures and get suggestions for improvement from GPT-4.
+            This will use the history of all rewrites.
+          </p>
+          <PromptReviewButton
+            onClick={handleAnalysePrompts}
+            isLoading={isAnalysing}
+            error={analysisError}
+          />
+          <PromptReviewDisplay analysisResult={promptAnalysisResult} />
+        </section>
+
         <footer className="mt-8 text-center text-gray-500 text-sm">
-          <p>Powered by Google Gemini API</p>
+          <p>Powered by Google Gemini API & OpenAI GPT-4</p>
         </footer>
       </div>
     </div>

@@ -132,34 +132,148 @@ async def rewrite_email(email_request: EmailRequest):
 
 @app.get("/history")
 async def get_history():
-    if LOG_PATH.exists():
-        try:
-            history_data = json.loads(LOG_PATH.read_text(encoding="utf-8"))
-            return history_data
-        except Exception as e:
-            # Log the exception server-side for more detailed debugging
-            print(f"ERROR: Failed to read or parse {LOG_PATH}: {e}")
-            # Return a JSON response with an error message and 500 status code
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"error": "Failed to load or parse rewrite_history.json", "details": str(e)}
-            )
-    return [] # If LOG_PATH does not exist, return an empty list as before
+    """
+    Retrieves the rewrite history.
+    Handles cases where the history file might be missing, empty, or malformed.
+    """
+    if not LOG_PATH.exists():
+        # If the log file doesn't exist, return an empty list.
+        # This is a common and often user-friendly way to indicate no history.
+        return []
+
+    try:
+        history_content = LOG_PATH.read_text(encoding="utf-8")
+        if not history_content.strip():
+            # If the file exists but is empty (or contains only whitespace),
+            # return an empty list or an appropriate message.
+            # Returning an empty list is consistent with "no history entries".
+            return []
+
+        history_data = json.loads(history_content)
+        return history_data
+    except json.JSONDecodeError as e:
+        # Specific handling for JSON parsing errors.
+        print(f"ERROR: Failed to parse {LOG_PATH}: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"error": "Failed to parse rewrite_history.json", "details": str(e)}
+        )
+    except Exception as e:
+        # Catch-all for other potential errors (e.g., permission issues).
+        print(f"ERROR: Failed to read {LOG_PATH}: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"error": "Failed to read rewrite_history.json", "details": str(e)}
+        )
+
+# Placeholder for a potential request model if needed, for now, not strictly used.
+# class AnalysisTriggerRequest(BaseModel):
+#     trigger: bool = True
 
 @app.post("/analyse_prompt")
-async def analyse_prompt(req: PromptAnalysisRequest):
+async def analyse_prompt(): # Removed req: PromptAnalysisRequest
     try:
+        # 1. Read rewrite_history.json
+        if not LOG_PATH.exists():
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"error": "rewrite_history.json not found."}
+            )
+
+        history_content = LOG_PATH.read_text(encoding="utf-8")
+        if not history_content:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": "rewrite_history.json is empty."}
+            )
+
+        try:
+            history_data = json.loads(history_content)
+            if not isinstance(history_data, list) or not history_data:
+                 return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={"error": "rewrite_history.json does not contain a valid list of entries or is empty."}
+                )
+        except json.JSONDecodeError as e:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"error": f"Failed to parse rewrite_history.json: {str(e)}"}
+            )
+
+        # 2. Group entries by tone
+        history_by_tone = {}
+        for entry in history_data:
+            tone = entry.get("tone")
+            if tone:
+                if tone not in history_by_tone:
+                    history_by_tone[tone] = []
+                history_by_tone[tone].append(entry)
+
+        if not history_by_tone:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": "No entries with 'tone' found in history data."}
+            )
+
+        # 3. For each tone, select up to 3 recent examples
+        examples_by_tone_str = ""
+        for tone, entries in history_by_tone.items():
+            examples_by_tone_str += f"\n--- Examples for '{tone}' tone ---\n"
+            # Select up to 3 most recent entries
+            recent_entries = entries[-3:]
+            for i, entry in enumerate(recent_entries):
+                original_email = entry.get('original_email', 'N/A')
+                final_prompt = entry.get('final_prompt', 'N/A') # Assuming this key exists from previous logging
+                gemini_response = entry.get('gemini_response', 'N/A') # Assuming this key exists
+                examples_by_tone_str += (
+                    f"\nExample {i+1}:\n"
+                    f"Original Email:\n{original_email}\n\n"
+                    f"Final Prompt (for Gemini):\n{final_prompt}\n\n"
+                    f"Gemini Response:\n{gemini_response}\n"
+                )
+            if not recent_entries:
+                examples_by_tone_str += "No examples found for this tone.\n"
+
+        # Construct the prompt for GPT-4 (Steps 4 & 5 from plan)
+        # This is a simplified version for now, will be expanded
+        gpt4_prompt = f"""{BRAND_TONE_GUIDANCE}
+
+The following are recent examples of email rewrites by another AI (Gemini), grouped by the requested tone.
+We want to analyze how effective the prompts given to Gemini were in achieving the desired tone and outcome,
+and how we can improve our overall system prompt or per-tone instructions.
+
+{examples_by_tone_str}
+
+--- Analysis Task for GPT-4 ---
+Based on the provided brand guidance and the examples:
+1. For each tone, analyze the effectiveness of the prompts used for Gemini. Were the Gemini responses aligned with the requested tone and brand guidance?
+2. Suggest specific improvements to the main `BRAND_TONE_GUIDANCE` to make it more effective.
+3. Suggest specific per-tone instructions or modifications that could be added to the prompt for Gemini to improve results for each tone.
+4. Provide a single, revised, complete system prompt (incorporating the updated `BRAND_TONE_GUIDANCE` and any per-tone advice) as a single block of text. This revised prompt should be what we use in the future for Gemini.
+
+Please provide your analysis and the revised system prompt.
+"""
+
+        # Send this prompt to GPT-4 (Step 6 from plan)
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-4", # Or "gpt-4-turbo" or other preferred model
             messages=[
-                {"role": "system", "content": "You are a prompt engineer reviewing the behavior of another AI model."},
-                {"role": "user", "content": req.prompt}
+                {"role": "system", "content": "You are an expert prompt engineer and AI writing assistant."},
+                {"role": "user", "content": gpt4_prompt}
             ],
-            temperature=0.7
+            temperature=0.7 # Adjust as needed
         )
+
+        # Return the raw text output from GPT-4 (Step 7 from plan)
         return {"output": response.choices[0].message.content.strip()}
+
     except Exception as e:
-        return {"error": f"Prompt analysis failed: {str(e)}"}
+        # Log the exception for server-side debugging
+        print(f"ERROR in /analyse_prompt: {str(e)}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"error": f"An unexpected error occurred during prompt analysis: {str(e)}"}
+        )
 
 
 if __name__ == "__main__":
