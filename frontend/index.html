@@ -31,6 +31,11 @@
   <button onclick="rewriteEmail()">Rewrite It</button>
 
   <div id="output"></div>
+  <hr>
+<h2>🔍 Prompt Review</h2>
+<button onclick="suggestPrompt()">Review History & Suggest Prompt</button>
+<pre id="suggestedPrompt" style="white-space: pre-wrap; margin-top: 1rem;"></pre>
+
 
   <script>
     async function rewriteEmail() {
@@ -46,6 +51,28 @@
       const data = await response.json();
       document.getElementById('output').innerText = data.rewritten || data.error || 'No response';
     }
+
+    async function suggestPrompt() {
+  const history = await fetch('http://127.0.0.1:8000/history').then(res => res.json());
+
+  const prompt = `
+You are a senior prompt engineer reviewing the performance of an AI assistant that rewrites emails using tone guidance.
+Based on the following data (original email, tone, AI response), suggest an improved system prompt or instruction set.
+Be concise and opinionated. Return only the new proposed system prompt.
+
+DATA:
+${JSON.stringify(history.slice(-10), null, 2)}
+`;
+
+  const response = await fetch('http://127.0.0.1:8000/analyse_prompt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt })
+  });
+
+  const data = await response.json();
+  document.getElementById('suggestedPrompt').innerText = data.output || data.error || 'No response';
+}
   </script>
 </body>
 </html>

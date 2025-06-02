@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import json
 from datetime import datetime
+import openai
 
 LOG_PATH = Path("rewrite_history.json")
 
@@ -32,6 +33,11 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in environment variables")
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+if not openai.api_key:
+    raise ValueError("OPENAI_API_KEY not found in environment variables")
+
 
 # Configure Gemini model
 genai.configure(api_key=GEMINI_API_KEY)
@@ -57,7 +63,8 @@ Use clear, confident language, and follow Australian English spelling and conven
 Avoid Americanisms like 'organize' or 'color' — prefer 'organise', 'colour', etc.
 When referring to business terms, use Australian-appropriate language where applicable.
 """
-
+class PromptAnalysisRequest(BaseModel):
+    prompt: str
 
 class EmailRequest(BaseModel):
     email: str
@@ -125,6 +132,22 @@ async def get_history():
     if LOG_PATH.exists():
         return json.loads(LOG_PATH.read_text(encoding="utf-8"))
     return []
+
+@app.post("/analyse_prompt")
+async def analyse_prompt(req: PromptAnalysisRequest):
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a prompt engineer reviewing the behavior of another AI model."},
+                {"role": "user", "content": req.prompt}
+            ],
+            temperature=0.7
+        )
+        return {"output": response.choices[0].message.content.strip()}
+    except Exception as e:
+        return {"error": f"Prompt analysis failed: {str(e)}"}
+
 
 if __name__ == "__main__":
     uvicorn.run("app_fastapi:app", host="0.0.0.0", port=8000, reload=True)
