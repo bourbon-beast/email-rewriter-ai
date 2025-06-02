@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pathlib import Path
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 # Load env vars
@@ -23,10 +24,22 @@ model = genai.GenerativeModel("models/gemini-2.0-flash")
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Or replace with your frontend origin if needed
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Set up templates and static files
 templates = Jinja2Templates(directory="templates")
 BASE_DIR = Path(__file__).resolve().parent.parent  # goes up from /backend
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+BRAND_TONE_GUIDANCE = """
+You are an assistant writing on behalf of AcmeHR — a modern, global HR and EOR platform.
+You always maintain a tone that is clear, confident, and appropriate to the user's requested style.
+"""
 
 class EmailRequest(BaseModel):
     email: str
@@ -38,13 +51,31 @@ async def index(request: Request):
 
 @app.post("/rewrite")
 async def rewrite_email(email_request: EmailRequest):
-    prompt = f"""Rewrite the following email in a {email_request.tone} tone.
-Maintain the same intent and meaning, but change the style.
+    prompt = f"""{BRAND_TONE_GUIDANCE}
 
-Original:
-{email_request.email}
+    The user has submitted the following email and would like it rewritten in a "{email_request.tone}" tone:
 
-Rewritten ({email_request.tone} tone):"""
+    --- ORIGINAL EMAIL ---
+    {email_request.email}
+    ----------------------
+
+    Please complete the following:
+
+    1. Briefly analyze the tone and effectiveness of the original email (1–2 sentences) against the "{email_request.tone}" tone to help imporve the users next attempt.
+    2. Suggest a subject line that fits the email and reflects the "{email_request.tone}" tone.
+    3. Rewrite the email in the "{email_request.tone}" tone while maintaining its original intent.
+
+    Respond using this format:
+
+    ANALYSIS:
+    [...]
+
+    SUBJECT:
+    [...]
+
+    REWRITTEN EMAIL:
+    [...]
+    """
 
     try:
         response = model.generate_content(prompt)
