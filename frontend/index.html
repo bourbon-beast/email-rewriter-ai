@@ -1,13 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/envelope.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Smart Email Rewriter</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <title>Email Rewriter</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    textarea, select, button { width: 100%; margin-top: 1rem; font-size: 1rem; }
+    #output { margin-top: 2rem; white-space: pre-wrap; background: #f9f9f9; padding: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Email Rewriter ✨</h1>
+  
+  <label for="email">Your Email:</label>
+  <textarea id="email" rows="6" placeholder="Paste your rough email here..."></textarea>
+
+  <label for="tone">Choose a tone:</label>
+  <select id="tone">
+    <option value="friendly">Friendly</option>
+    <option value="professional">Professional</option>
+    <option value="concise">Concise</option>
+    <option value="very angry">Very Angry 😡</option>
+  </select>
+
+  <button onclick="rewriteEmail()">Rewrite It</button>
+
+  <div id="output"></div>
+
+  <script>
+    async function rewriteEmail() {
+      const email = document.getElementById('email').value;
+      const tone = document.getElementById('tone').value;
+
+      const response = await fetch('http://127.0.0.1:8000/rewrite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, tone })
+      });
+
+      const data = await response.json();
+      document.getElementById('output').innerText = data.rewritten || data.error || 'No response';
+    }
+  </script>
+</body>
 </html>
