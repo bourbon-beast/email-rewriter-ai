@@ -37,3 +37,25 @@ env/
 # OS specific files
 .DS_Store
 Thumbs.db
+frontend/node_modules/.vite/deps/_metadata.json
+frontend/node_modules/.vite/deps/chunk-3ON3CNAS.js
+frontend/node_modules/.vite/deps/chunk-3ON3CNAS.js.map
+frontend/node_modules/.vite/deps/package.json
+frontend/node_modules/.vite/deps/react_jsx-dev-runtime.js
+frontend/node_modules/.vite/deps/react_jsx-dev-runtime.js.map
+frontend/node_modules/.vite/deps/react_jsx-runtime.js
+frontend/node_modules/.vite/deps/react_jsx-runtime.js.map
+frontend/node_modules/.vite/deps/react-dom.js
+frontend/node_modules/.vite/deps/react-dom.js.map
+frontend/node_modules/.vite/deps/react.js
+frontend/node_modules/.vite/deps/react.js.map
+frontend/node_modules/.vite/deps/axios.js
+frontend/node_modules/.vite/deps/axios.js.map
+frontend/node_modules/.vite/deps/chunk-6TJCVOLN.js
+frontend/node_modules/.vite/deps/chunk-6TJCVOLN.js.map
+frontend/node_modules/.vite/deps/chunk-C73SNUHP.js
+frontend/node_modules/.vite/deps/chunk-C73SNUHP.js.map
+frontend/node_modules/.vite/deps/chunk-CORUIQPR.js
+frontend/node_modules/.vite/deps/chunk-CORUIQPR.js.map
+frontend/node_modules/.vite/deps/react-dom_client.js
+frontend/node_modules/.vite/deps/react-dom_client.js.map
