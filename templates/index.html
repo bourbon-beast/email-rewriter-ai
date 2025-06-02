@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Rewriter AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Email Rewriter AI</h1>
+        <p>Transform your emails with AI assistance</p>
+        
+        <div class="email-form">
+            <div class="form-group">
+                <label for="original-email">Original Email:</label>
+                <textarea id="original-email" rows="10" placeholder="Paste your email here..."></textarea>
+            </div>
+            
+            <div class="form-group tone-selector">
+                <label>Select Tone:</label>
+                <div class="tone-options">
+                    <button class="tone-btn active" data-tone="professional">Professional</button>
+                    <button class="tone-btn" data-tone="friendly">Friendly</button>
+                    <button class="tone-btn" data-tone="concise">Concise</button>
+                    <button class="tone-btn" data-tone="persuasive">Persuasive</button>
+                </div>
+            </div>
+            
+            <button id="rewrite-btn">Rewrite Email</button>
+            
+            <div class="form-group result-container hidden">
+                <label for="rewritten-email">Rewritten Email:</label>
+                <textarea id="rewritten-email" rows="10" readonly></textarea>
+                <button id="copy-btn">Copy to Clipboard</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
