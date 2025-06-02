@@ -9,6 +9,22 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pathlib import Path
 import uvicorn
+import json
+from datetime import datetime
+
+LOG_PATH = Path("rewrite_history.json")
+
+def log_rewrite(entry: dict):
+    if LOG_PATH.exists():
+        with open(LOG_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    else:
+        data = []
+
+    data.append(entry)
+
+    with open(LOG_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
 
 # Load env vars
 load_dotenv()
@@ -19,7 +35,6 @@ if not GEMINI_API_KEY:
 # Configure Gemini model
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("models/gemini-2.0-flash")
-
 
 app = FastAPI()
 
@@ -50,6 +65,17 @@ Rewritten ({email_request.tone} tone):"""
         response = model.generate_content(prompt)
         rewritten_email = response.text.strip()
 
+        log_entry = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "original_email": email_request.email,
+            "tone": email_request.tone,
+            "final_prompt": prompt,
+            "gemini_response": rewritten_email,
+            "user_feedback": None
+        }
+
+        log_rewrite(log_entry)
+
         return {
             "original": email_request.email,
             "rewritten": rewritten_email,
@@ -59,6 +85,12 @@ Rewritten ({email_request.tone} tone):"""
         return {
             "error": f"Failed to generate email: {str(e)}"
         }
+
+@app.get("/history")
+async def get_history():
+    if LOG_PATH.exists():
+        return json.loads(LOG_PATH.read_text(encoding="utf-8"))
+    return []
 
 if __name__ == "__main__":
     uvicorn.run("app_fastapi:app", host="0.0.0.0", port=8000, reload=True)
