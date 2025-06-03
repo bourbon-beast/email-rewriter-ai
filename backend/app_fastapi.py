@@ -13,6 +13,9 @@ import uvicorn
 import json
 from datetime import datetime
 import openai
+import sqlite3 # Added import
+
+from backend.database.prompt_db import PromptDatabase # Added import
 
 print(f"DEBUG: Current Working Directory: {os.getcwd()}")
 
@@ -46,6 +49,12 @@ if not openai.api_key:
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("models/gemini-2.0-flash")
 
+# Initialize database connection
+# Ensure this path correctly points to where you want the database file to live.
+# If app_fastapi.py is in /backend, and prompts.db should be in /backend/database/prompts.db
+db_path = Path(__file__).parent / "database" / "prompts.db"
+db = PromptDatabase(db_path=str(db_path))
+
 app = FastAPI()
 
 app.add_middleware(
@@ -60,12 +69,8 @@ app.add_middleware(
 templates = Jinja2Templates(directory="templates")
 BASE_DIR = Path(__file__).resolve().parent.parent  # goes up from /backend
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
-BRAND_TONE_GUIDANCE = """
-You are an assistant writing on behalf of AcmeHR, an Australian HR and EOR platform.
-Use clear, confident language, and follow Australian English spelling and conventions.
-Avoid Americanisms like 'organize' or 'color' — prefer 'organise', 'colour', etc.
-When referring to business terms, use Australian-appropriate language where applicable.
-"""
+# BRAND_TONE_GUIDANCE has been removed; will be fetched from DB.
+
 class PromptAnalysisRequest(BaseModel):
     prompt: str
 
@@ -73,37 +78,69 @@ class EmailRequest(BaseModel):
     email: str
     tone: str = "professional"
 
+class BasePromptUpdateRequest(BaseModel):
+    content: str
+    reason: str
+
+class ToneInstructionsUpdateRequest(BaseModel):
+    instructions: str
+    reason: str
+
+class ToneCreateRequest(BaseModel):
+    keyword: str
+    label: str
+    instructions: str
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/rewrite")
 async def rewrite_email(email_request: EmailRequest):
-    prompt = f"""{BRAND_TONE_GUIDANCE}
+    active_base_prompt = db.get_active_base_prompt()
+    if not active_base_prompt:
+        # Fallback if no active base prompt is found
+        active_base_prompt = "You are a helpful writing assistant. Please rewrite the provided email."
+        # Consider logging this event.
+        print("WARNING: No active base prompt found in DB, using fallback for /rewrite endpoint.")
 
-    The user has submitted the following email and would like it rewritten in a "{email_request.tone}" tone:
+    tone_details = db.get_tone_by_keyword(email_request.tone)
+    tone_instructions_segment = "" # Use a different variable name to avoid conflict with a potential 'tone_instructions' in tone_details
+    if tone_details and tone_details.get('instructions'):
+        tone_instructions_segment = f"Apply the following tone guidance for '{tone_details.get('label', email_request.tone)}':\n{tone_details['instructions']}\n\n"
+    else:
+        # Optional: log if specific tone instructions are not found
+        print(f"INFO: No specific instructions found for tone '{email_request.tone}', using base prompt and general instructions.")
+        # Even if no specific instructions, we still want the tone to be part of the general instruction.
 
-    --- ORIGINAL EMAIL ---
-    {email_request.email}
-    ----------------------
+    # Reconstruct the detailed multi-step prompt using fetched components
+    prompt = f"""{active_base_prompt}
 
-    Please complete the following:
+{tone_instructions_segment}The user has submitted the following email and would like it rewritten in a "{email_request.tone}" tone. The original email is:
 
-    1. Briefly analyze the tone and effectiveness of the original email (1–2 sentences) against the "{email_request.tone}" tone to help imporve the users next attempt.
-    2. Suggest a subject line that fits the email and reflects the "{email_request.tone}" tone.
-    3. Rewrite the email in the "{email_request.tone}" tone while maintaining its original intent.
+--- ORIGINAL EMAIL ---
+{email_request.email}
+----------------------
 
-    Respond using this format:
+Please complete the following tasks:
 
-    ANALYSIS:
-    [...]
+1. Briefly analyze the tone and effectiveness of the original email (1–2 sentences) against the desired "{email_request.tone}" tone. This analysis should help the user understand areas for improvement in their original draft when aiming for this specific tone.
+2. Suggest a concise and fitting subject line for the rewritten email that reflects the "{email_request.tone}" tone.
+3. Rewrite the email in the specified "{email_request.tone}" tone, ensuring the core message and intent of the original email are preserved.
 
-    SUBJECT:
-    [...]
+Respond using the following exact format, including the labels ANALYSIS:, SUBJECT:, and REWRITTEN EMAIL: (do not add any other text or markdown like ```json or ```):
 
-    REWRITTEN EMAIL:
-    [...]
+ANALYSIS:
+[Your analysis here]
+
+SUBJECT:
+[Your subject line here]
+
+REWRITTEN EMAIL:
+[Your rewritten email here]
     """
+    # Ensure this `prompt` variable is the one used in `model.generate_content(prompt)`
+    # and logged in `log_entry["final_prompt"] = prompt`.
 
     try:
         response = model.generate_content(prompt)
@@ -173,6 +210,15 @@ async def get_history():
 @app.post("/analyse_prompt")
 async def analyse_prompt(): # Removed req: PromptAnalysisRequest
     try:
+        active_base_prompt = db.get_active_base_prompt()
+        if not active_base_prompt:
+            # Handle case where no active base prompt is found
+            # Return an error or use a system-default message if appropriate
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"error": "Active base prompt not found in database. Cannot perform analysis."}
+            )
+
         # 1. Read rewrite_history.json
         if not LOG_PATH.exists():
             return JSONResponse(
@@ -235,22 +281,24 @@ async def analyse_prompt(): # Removed req: PromptAnalysisRequest
                 examples_by_tone_str += "No examples found for this tone.\n"
 
         # Construct the prompt for GPT-4 (Steps 4 & 5 from plan)
-        # This is a simplified version for now, will be expanded
-        gpt4_prompt = f"""{BRAND_TONE_GUIDANCE}
+        gpt4_prompt = f"""The current active base prompt is:
+--- BEGIN ACTIVE BASE PROMPT ---
+{active_base_prompt}
+--- END ACTIVE BASE PROMPT ---
 
 The following are recent examples of email rewrites by another AI (Gemini), grouped by the requested tone.  
 We want to analyze how effective the prompts given to Gemini were in achieving the desired tone and outcome,  
-and how we can improve our overall system prompt or per-tone instructions.
+and how we can improve our overall system (base prompt + per-tone instructions).
 
 {examples_by_tone_str}
 
 --- Analysis Task for GPT-4 ---
-Based on the provided brand guidance and the examples:
+Based on the provided active base prompt and the examples:
 
-1. For each tone, analyze the effectiveness of the prompts used for Gemini. Were the Gemini responses aligned with the requested tone and brand guidance?
-2. Suggest specific improvements to the main `BRAND_TONE_GUIDANCE` to make it more effective.
-3. Suggest specific per-tone instructions or modifications that could be added to the prompt for Gemini to improve results for each tone.
-4. Provide a single, revised, complete system prompt that incorporates all improvements and is ready to use immediately with Gemini (no placeholders).
+1. For each tone, analyze the effectiveness of the prompts used for Gemini. Were the Gemini responses aligned with the requested tone and the active base prompt?
+2. Suggest specific improvements to the **active base prompt** (provided at the beginning of this request) to make it more effective for overall guidance.
+3. Suggest specific **instructions or modifications for each tone** (professional, friendly, concise, action-oriented) that could be added or updated to improve results for that specific tone when used by Gemini. These tone instructions would be applied *in addition* to the base prompt.
+4. Provide a single, revised, complete **base prompt** that incorporates your suggested improvements for the base prompt (if any) and is ready to use. Do not include per-tone instructions in this revised base prompt.
 
 Return your response as **valid JSON** with these exact keys and structure:
 
@@ -262,8 +310,8 @@ Return your response as **valid JSON** with these exact keys and structure:
         "concise": "Analysis of concise tone effectiveness",
         "action-oriented": "Analysis of action-oriented tone effectiveness"
     }},
-    "improvement_suggestions": "Specific suggestions for improving the current prompt structure",
-    "revised_prompt": "A complete, ready-to-use system prompt with no placeholders that incorporates all improvements"
+    "improvement_suggestions": "Specific suggestions for improving the current prompt structure (covering both base prompt and per-tone instructions aspects)",
+    "revised_prompt": "A complete, ready-to-use revised **base prompt** with no placeholders that incorporates your improvements."
 }}
 
 **Important:**  
@@ -299,6 +347,74 @@ Return your response as **valid JSON** with these exact keys and structure:
             content={"error": f"An unexpected error occurred during prompt analysis: {str(e)}"}
         )
 
+# --- Prompt Management Endpoints ---
+
+@app.get("/prompts/base")
+async def get_base_prompt_endpoint():
+    content = db.get_active_base_prompt()
+    if content is None:
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"error": "Active base prompt not found."})
+    return {"content": content}
+
+@app.get("/prompts/tones")
+async def get_tones_endpoint():
+    tones = db.get_active_tones() # Assuming this returns a list of dicts
+    return tones
+
+@app.get("/prompts/history")
+async def get_prompt_history_endpoint():
+    try:
+        history = db.get_prompt_history() # Assuming this returns a list of dicts/objects
+        return history
+    except Exception as e:
+        # Log the exception e
+        print(f"Error fetching prompt history: {e}")
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"error": str(e)})
+
+@app.put("/prompts/base")
+async def update_base_prompt_endpoint(request: BasePromptUpdateRequest):
+    try:
+        db.update_base_prompt(content=request.content, reason=request.reason)
+        return {"message": "Base prompt updated successfully."}
+    except Exception as e:
+        # Log the exception e
+        print(f"Error updating base prompt: {e}")
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"error": str(e)})
+
+@app.put("/prompts/tones/{keyword}")
+async def update_tone_instructions_endpoint(keyword: str, request: ToneInstructionsUpdateRequest):
+    try:
+        # Check if tone exists before attempting update
+        tone = db.get_tone_by_keyword(keyword)
+        if not tone:
+            return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"error": f"Tone with keyword '{keyword}' not found."})
+        db.update_tone_instructions(keyword=keyword, instructions=request.instructions, reason=request.reason)
+        return {"message": f"Tone '{keyword}' updated successfully."}
+    except Exception as e:
+        # Log the exception e
+        print(f"Error updating tone {keyword}: {e}")
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"error": str(e)})
+
+@app.post("/prompts/tones")
+async def create_tone_endpoint(request: ToneCreateRequest):
+    try:
+        db.create_tone(keyword=request.keyword, label=request.label, instructions=request.instructions)
+        # Fetch the created tone to return it, or construct the response manually
+        created_tone = db.get_tone_by_keyword(request.keyword) # Assuming create_tone makes it active
+        if not created_tone:
+             # Should ideally not happen if create_tone was successful and makes it active
+             return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"error": "Tone created but could not be retrieved."})
+        return JSONResponse(status_code=status.HTTP_201_CREATED, content=created_tone)
+    except sqlite3.IntegrityError: # Specific error for duplicate keyword
+        return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={"error": f"Tone with keyword '{request.keyword}' already exists."})
+    except Exception as e:
+        # Log the exception e
+        print(f"Error creating tone {request.keyword}: {e}")
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"error": str(e)})
+
+@app.post("/prompts/apply-suggestion")
+async def apply_suggestion_endpoint(): # Add request body model if known, else generic for now
+    return JSONResponse(status_code=status.HTTP_501_NOT_IMPLEMENTED, content={"message": "Apply suggestion feature not implemented yet."})
 
 if __name__ == "__main__":
-    uvicorn.run("app_fastapi:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("backend.app_fastapi:app", host="0.0.0.0", port=8000, reload=True)
