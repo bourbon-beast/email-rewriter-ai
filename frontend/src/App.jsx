@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { rewriteEmail, analysePromptHistory } from './api'
 import PromptReviewButton from './PromptReviewButton'
 // PromptReviewDisplay is now more complex and used within the 'promptReview' tab content
-// import PromptReviewDisplay from './PromptReviewDisplay'
+import PromptReviewDisplay from './PromptReviewDisplay'
 import RewriteHistoryTab from './RewriteHistoryTab'
 import PromptManager from './PromptManager'; // Import the new component
 import './App.css'

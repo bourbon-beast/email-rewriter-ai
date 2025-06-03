@@ -15,7 +15,7 @@ from datetime import datetime
 import openai
 import sqlite3 # Added import
 
-from backend.database.prompt_db import PromptDatabase # Added import
+from database.prompt_db import PromptDatabase # Added import
 
 LOG_PATH = Path("rewrite_history.json")
 
@@ -485,4 +485,4 @@ async def apply_suggestion_endpoint(request: ApplySuggestionRequest):
         )
 
 if __name__ == "__main__":
-    uvicorn.run("backend.app_fastapi:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app_fastapi:app", host="0.0.0.0", port=8000, reload=True)
