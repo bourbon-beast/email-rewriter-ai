@@ -89,10 +89,10 @@ When referring to business terms, use Australian-appropriate language where appl
                 print("Active base prompt already exists. Skipping seeding.")
 
             initial_tones = [
-                ("professional", "Professional", "Maintain a formal, respectful, and objective tone. Avoid slang and overly casual language."),
-                ("friendly", "Friendly", "Use a warm, approachable, and conversational tone. Feel free to use contractions and positive language."),
-                ("concise", "Concise", "Be brief, to the point, and eliminate unnecessary words. Focus on clarity and efficiency."),
-                ("action-oriented", "Action-Oriented", "Focus on encouraging the recipient to take a specific action. Use strong verbs and clear calls to action.")
+                ("professional", "Professional", ""), # Instructions intentionally left empty initially
+                ("friendly", "Friendly", ""),       # Instructions intentionally left empty initially
+                ("concise", "Concise", ""),         # Instructions intentionally left empty initially
+                ("action-oriented", "Action-Oriented", "") # Instructions intentionally left empty initially
             ]
 
             for keyword, label, instructions in initial_tones:
@@ -316,3 +316,10 @@ if __name__ == '__main__':
     print("Finished re-initializing. Check logs above for 'already exists' messages for tones/base prompt.")
 
     print("\n--- All Tests Passed (if assertions didn't fail) ---")
+
+# Future Schema Migrations:
+# For more complex schema changes after initial deployment, consider using a database migration tool
+# like Alembic (for SQLAlchemy-based models) or custom SQL migration scripts managed manually.
+# Simple changes might involve adding new tables or columns with default values, but altering existing
+# column types or constraints in a live SQLite database requires careful handling, often involving
+# creating a new table, copying data, dropping the old table, and renaming the new one.

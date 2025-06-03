@@ -1,61 +1,71 @@
-# Project README
+# AI Email Rewriter & Prompt Management System
 
-This project is a web application with a Python backend (Flask and FastAPI options) and a React frontend.
+This project is a web application that rewrites emails using AI and includes a system for dynamically managing the prompts used by the AI. It features a Python FastAPI backend and a React frontend.
+
+## Key Features
+
+*   **AI-Powered Email Rewriting:** Submit an email and have it rewritten in various tones (e.g., professional, friendly).
+*   **Dynamic Prompt Management:**
+    *   Centralized database (SQLite) for storing and managing AI prompt components.
+    *   UI to view and update the active base prompt.
+    *   UI to view, update, and create custom tones with specific instructions.
+    *   History tracking for all changes made to prompts and tones.
+*   **Prompt Analysis & Suggestions:**
+    *   Leverages GPT-4 to analyze the effectiveness of current prompts based on rewrite history.
+    *   Displays structured suggestions for improving the base prompt and tone instructions.
+    *   Allows users to apply these suggestions directly to the database with a confirmation step.
 
 ## Project Structure
 
-The project is organized into the following main directories:
-
-- `backend/`: Contains the Python backend applications (Flask and FastAPI).
-- `frontend/`: Contains the React application built with Vite.
-- `static/`: Contains static assets (CSS, JS), primarily used by the `app_fastapi.py` (FastAPI) application.
-- `templates/`: Contains HTML templates, primarily used by the `app_fastapi.py` (FastAPI) application to serve a simple frontend.
+-   `backend/`: Contains the Python FastAPI application (`app_fastapi.py`) and database logic (`database/`).
+    -   `backend/database/prompts.db`: SQLite database file (automatically created).
+    -   `backend/database/schema.sql`: SQL schema for the database.
+-   `frontend/`: Contains the React application (built with Vite).
+-   `rewrite_history.json`: Logs email rewrite operations for analysis.
+-   `.env`: Environment variable configuration file (needs to be created from `.env.example`).
 
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3.7+
-- Node.js and npm (or yarn)
+-   Python 3.9+ (FastAPI and its dependencies)
+-   Node.js and npm (or yarn) for the frontend.
+-   Access to OpenAI (for GPT-4) and Google Gemini APIs, with corresponding API keys.
 
-### Backend Setup
+### Backend Setup (`app_fastapi.py`)
 
-1.  **Navigate to the backend directory:**
-    ```bash
-    cd backend
-    ```
+1.  **Navigate to the project root directory.**
 2.  **Create and activate a virtual environment (recommended):**
     ```bash
     python -m venv venv
     source venv/bin/activate  # On Windows: venv\Scripts\activate
     ```
-3.  **Install dependencies:**
+3.  **Install Python dependencies:**
     ```bash
+    cd backend
     pip install -r requirements.txt
+    cd ..
     ```
+    *(Ensure `backend/requirements.txt` is up-to-date with `fastapi`, `uvicorn[standard]`, `python-dotenv`, `google-generativeai`, `openai`)*
+
 4.  **Set up environment variables:**
-    Copy `.env.example` to `.env` and update the variables as needed.
-    ```bash
-    cp .env.example .env
+    *   In the **project root directory** (e.g., where `rewrite_history.json` is), create a file named `.env`.
+    *   Copy the contents from `backend/.env.example` into this new `.env` file.
+    *   Update the `GEMINI_API_KEY` and `OPENAI_API_KEY` with your actual API keys.
     ```
-5.  **Run the backend server:**
-    The `backend` directory contains two different web server applications:
-    - `app.py`: A Flask application that uses the Google Gemini API to rewrite email content. This application provides the core AI functionality.
-    - `app_fastapi.py`: A FastAPI application that includes a placeholder `/rewrite` endpoint. It also serves a simple HTML page from the `templates` directory and static files from the `static` directory.
+    GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+    OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
+    ```
 
-    **Running the Flask application (`app.py` - with AI features):**
-    To run the Flask application, which provides the email rewriting functionality:
-    ```bash
-    python app.py
-    ```
-    The Flask backend will typically be available at `http://127.0.0.1:5000` (Flask's default port). This is the recommended backend for using the email rewriting functionality.
+5.  **Database Initialization:**
+    The SQLite database (`backend/database/prompts.db`) and its schema will be automatically created and initialized with default data (base prompt, initial tones) the first time you run the backend application if the file does not already exist.
 
-    **Running the FastAPI application (`app_fastapi.py`):**
-    To run the FastAPI application:
+6.  **Run the backend server:**
+    From the **project root directory**, run the FastAPI application as a module:
     ```bash
-    uvicorn app_fastapi:app --reload
+    python -m backend.app_fastapi
     ```
-    The FastAPI backend will typically be available at `http://127.0.0.1:8000`. Note that its `/rewrite` endpoint currently returns placeholder data and it primarily serves a basic HTML interface using the `templates/` and `static/` directories.
+    The backend will typically be available at `http://localhost:8000`.
 
 ### Frontend Setup
 
@@ -75,56 +85,54 @@ The project is organized into the following main directories:
     # or
     # yarn dev
     ```
-    The frontend will typically be available at `http://localhost:5173`.
+    The frontend will typically be available at `http://localhost:5173` (or another port if 5173 is busy).
+    The frontend is configured to connect to the backend at `http://localhost:8000`.
 
-## Usage
+## Using the Application
 
-Once the chosen backend server (preferably `app.py` for the AI features) and the frontend React server (`frontend/`) are running, open your web browser and navigate to the frontend URL (e.g., `http://localhost:5173`).
+Once both backend and frontend servers are running, open your web browser and navigate to the frontend URL (e.g., `http://localhost:5173`).
 
-The React application (`frontend/`) is designed to interact with one of the backend applications. You may need to verify or adjust the API endpoint configuration within the frontend code (typically in a file like `frontend/src/api.js` or a similar service/configuration file) to ensure it points to the correct backend address and port:
-- For `app.py` (Flask with AI features): `http://127.0.0.1:5000`
-- For `app_fastapi.py` (FastAPI with placeholder): `http://127.0.0.1:8000`
+### Main Features in the UI
 
-For the email rewriting functionality, ensure the frontend is configured to communicate with `app.py`. The `frontend/src/api.js` file is typically responsible for making the actual HTTP request to the backend's `/rewrite` endpoint.
+1.  **Rewrite Tab:**
+    *   Enter email content, select a tone, and get an AI-generated rewrite.
+    *   After a rewrite, a "Review Prompts & Suggest Improvements" button appears. Clicking this triggers a GPT-4 analysis of recent rewrites and the current prompts.
+    *   The analysis results, including suggestions, are displayed below.
 
-## AI Email Rewriting API (`app.py`)
+2.  **Prompt Review Display (within Rewrite Tab):**
+    *   Shows GPT-4's analysis: overall summary, tone effectiveness, a suggested revised base prompt, and a list of detailed improvement suggestions for base/tones.
+    *   Each actionable suggestion (revised base prompt or individual detailed suggestions) has an "Apply" button.
+    *   Clicking "Apply" will show a confirmation dialog. If confirmed, the suggestion is saved to the database, and the prompt management UI will reflect the change.
 
-The Flask backend (`app.py`) provides an endpoint for rewriting email content using the Google Gemini API.
+3.  **Prompt Management Tab:**
+    *   **Base Prompt Editor:** View and edit the currently active base prompt. Changes require a reason and are logged.
+    *   **Tones List:** View all active tones and their instructions. Edit existing tones or create new ones.
+        *   **Tone Editor:** Modify instructions for a specific tone. Changes require a reason and are logged.
+        *   **Create Tone Form:** Add a new custom tone with a unique keyword, label, and instructions.
+    *   **Prompt Change History:** View a log of all modifications made to the base prompt and tones, including reasons and timestamps.
 
-### Endpoint: `/rewrite`
+4.  **History Tab:**
+    *   Displays the history of email rewrite operations from `rewrite_history.json`.
 
--   **Method:** `POST`
--   **Description:** Accepts an original email and a desired tone, then returns the rewritten email.
--   **Request Body (JSON):**
-    ```json
-    {
-        "email": "Your original email content here...",
-        "tone": "professional"
-    }
-    ```
-    -   `email` (string, required): The email text to be rewritten.
-    -   `tone` (string, optional, default: "professional"): The desired tone for the rewritten email (e.g., "formal", "casual", "friendly").
--   **Response Body (JSON):**
-    On success (HTTP 200):
-    ```json
-    {
-        "original": "Your original email content here...",
-        "rewritten": "The rewritten email content by Gemini API...",
-        "tone": "professional"
-    }
-    ```
-    On error (e.g., HTTP 400 for missing email, HTTP 500 for API errors):
-    ```json
-    {
-        "error": "Error message describing the issue"
-    }
-    ```
--   **Underlying Mechanism:** This endpoint constructs a prompt using the provided email and tone, then calls the Google Gemini Pro model (`gemini-pro`) to generate the rewritten version of the email. The `GEMINI_API_KEY` environment variable must be correctly configured for this to work.
+## Backend API Endpoints (`app_fastapi.py`)
+
+The backend provides several API endpoints, including:
+
+*   `POST /rewrite`: Rewrites an email.
+*   `POST /analyse_prompt`: Triggers GPT-4 analysis of prompts.
+*   `GET /prompts/base`: Get the active base prompt.
+*   `PUT /prompts/base`: Update the active base prompt.
+*   `GET /prompts/tones`: Get all active tones.
+*   `POST /prompts/tones`: Create a new tone.
+*   `PUT /prompts/tones/{keyword}`: Update a specific tone.
+*   `GET /prompts/history`: Get the history of prompt changes.
+*   `POST /prompts/apply-suggestion`: Applies a GPT-4 suggestion to the database.
+*   `GET /history`: Gets the email rewrite history.
 
 ## Contributing
 
-Details on how to contribute to the project will be added here.
+Contributions are welcome. Please follow standard coding practices and provide documentation for new features.
 
 ## License
 
-Information about the project's license will be added here. If you plan to use or contribute to this project, please ensure you add an appropriate open-source license file (e.g., MIT, Apache 2.0).
+This project is currently unlicensed. Add an appropriate open-source license file (e.g., MIT, Apache 2.0) if you plan to distribute or share this codebase.

@@ -17,10 +17,7 @@ import sqlite3 # Added import
 
 from backend.database.prompt_db import PromptDatabase # Added import
 
-print(f"DEBUG: Current Working Directory: {os.getcwd()}")
-
 LOG_PATH = Path("rewrite_history.json")
-print(f"DEBUG: Resolved LOG_PATH: {LOG_PATH.resolve()}")
 
 def log_rewrite(entry: dict):
     if LOG_PATH.exists():
@@ -69,7 +66,6 @@ app.add_middleware(
 templates = Jinja2Templates(directory="templates")
 BASE_DIR = Path(__file__).resolve().parent.parent  # goes up from /backend
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
-# BRAND_TONE_GUIDANCE has been removed; will be fetched from DB.
 
 class PromptAnalysisRequest(BaseModel):
     prompt: str
