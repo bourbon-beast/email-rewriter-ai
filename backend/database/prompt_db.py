@@ -92,7 +92,9 @@ When referring to business terms, use Australian-appropriate language where appl
                 ("professional", "Professional", ""), # Instructions intentionally left empty initially
                 ("friendly", "Friendly", ""),       # Instructions intentionally left empty initially
                 ("concise", "Concise", ""),         # Instructions intentionally left empty initially
-                ("action-oriented", "Action-Oriented", "") # Instructions intentionally left empty initially
+                ("action-oriented", "Action-Oriented", ""),
+                ("whimsical", "Whimsical", "Use playful language and unexpected turns of phrase."), # New tone added
+ # Instructions intentionally left empty initially
             ]
 
             for keyword, label, instructions in initial_tones:
