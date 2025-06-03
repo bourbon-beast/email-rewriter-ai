@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { rewriteEmail, analysePromptHistory } from './api'
+import { useState, useEffect } from 'react'
+import { rewriteEmail, analysePromptHistory, getTones } from './api'
 import PromptReviewButton from './PromptReviewButton'
 // PromptReviewDisplay is now more complex and used within the 'promptReview' tab content
 import PromptReviewDisplay from './PromptReviewDisplay.jsx'
@@ -7,14 +7,8 @@ import RewriteHistoryTab from './RewriteHistoryTab'
 import PromptManager from './PromptManager'; // Import the new component
 import './App.css'
 
-const TONES = [
-  { id: 'professional', label: 'Professional' },
-  { id: 'friendly', label: 'Friendly' },
-  { id: 'concise', label: 'Concise' },
-  { id: 'action-oriented', label: 'Action-Oriented' }
-]
-
 function App() {
+  const [tonesList, setTonesList] = useState([]);
   const [originalEmail, setOriginalEmail] = useState('')
   const [rewrittenEmail, setRewrittenEmail] = useState('')
   const [selectedTone, setSelectedTone] = useState('professional')
@@ -28,6 +22,24 @@ function App() {
   const [analysisError, setAnalysisError] = useState(null)
   const [activeTab, setActiveTab] = useState('rewriter') // 'rewriter', 'promptReview', 'history', 'promptManagement'
   const [promptDataRefreshKey, setPromptDataRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const fetchTones = async () => {
+      try {
+        const tones = await getTones();
+        const mappedTones = tones.map(tone => ({ id: tone.keyword, label: tone.label }));
+        setTonesList(mappedTones);
+        if (mappedTones.length > 0) {
+          setSelectedTone(mappedTones[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch tones:", error);
+        // Optionally, set an error state here to display in the UI
+      }
+    };
+
+    fetchTones();
+  }, []);
 
   const handlePromptDataRefresh = () => {
       setPromptDataRefreshKey(prevKey => prevKey + 1);
@@ -183,7 +195,7 @@ function App() {
                     Select Tone
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {TONES.map(tone => (
+                    {tonesList.map(tone => (
                       <button
                         key={tone.id}
                         type="button"
