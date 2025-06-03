@@ -282,7 +282,14 @@ Return your response as **valid JSON** with these exact keys and structure:
         )
 
         # Return the raw text output from GPT-4 (Step 7 from plan)
-        return {"output": response.choices[0].message.content.strip()}
+         # Parse the JSON response from GPT-4
+        gpt_response = response.choices[0].message.content.strip()
+        
+        # Parse the JSON string into a Python object
+        analysis_result = json.loads(gpt_response)
+        
+        # Return the parsed object directly (Flask will JSON-encode it)
+        return analysis_result
 
     except Exception as e:
         # Log the exception for server-side debugging
