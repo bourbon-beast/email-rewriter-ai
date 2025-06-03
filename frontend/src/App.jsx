@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { rewriteEmail, analysePromptHistory } from './api'
 import PromptReviewButton from './PromptReviewButton'
-import PromptReviewDisplay from './PromptReviewDisplay'
+// PromptReviewDisplay is now more complex and used within the 'promptReview' tab content
+// import PromptReviewDisplay from './PromptReviewDisplay'
 import RewriteHistoryTab from './RewriteHistoryTab'
+import PromptManager from './PromptManager'; // Import the new component
 import './App.css'
 
 const TONES = [
@@ -24,7 +26,12 @@ function App() {
   const [analysisData, setAnalysisData] = useState(null)
   const [isAnalysing, setIsAnalysing] = useState(false)
   const [analysisError, setAnalysisError] = useState(null)
-  const [activeTab, setActiveTab] = useState('rewriter')
+  const [activeTab, setActiveTab] = useState('rewriter') // 'rewriter', 'promptReview', 'history', 'promptManagement'
+  const [promptDataRefreshKey, setPromptDataRefreshKey] = useState(0);
+
+  const handlePromptDataRefresh = () => {
+      setPromptDataRefreshKey(prevKey => prevKey + 1);
+  };
 
   const handleRestoreFromHistory = (historyItem) => {
     setOriginalEmail(historyItem.original_email || '');
@@ -139,6 +146,16 @@ function App() {
             >
               Rewrite History
             </button>
+            <button
+              onClick={() => setActiveTab('promptManagement')}
+              className={`px-4 py-3 font-medium text-sm transition-colors rounded-t-lg
+                ${activeTab === 'promptManagement'
+                  ? 'bg-white text-blue-600 border-gray-300 border-t-2 border-x-2 -mb-px'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 border-transparent border-b-2'
+                }`}
+            >
+              Prompt Management
+            </button>
           </div>
         </nav>
         
@@ -229,91 +246,35 @@ function App() {
           )}
           
           {activeTab === 'promptReview' && (
+            // The PromptReviewDisplay component will be used here,
+            // and it needs the analysisData from App's state.
             <section className="p-6 bg-white rounded-b-lg rounded-tr-lg shadow-md">
               <h2 className="text-2xl font-semibold text-gray-700 mb-4">Prompt Performance Review</h2>
-
-              <div className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-700 mb-3">Current System Prompt Analysis</h3>
-                <p className="text-gray-600 mb-4">
+               <p className="text-gray-600 mb-4">
                   Analyse the effectiveness of past prompt structures and get suggestions for improvement from GPT-4.
                   This will use the history of all rewrites.
                 </p>
-                <PromptReviewButton
+              <PromptReviewButton
                   onClick={handleAnalysePrompts}
                   isLoading={isAnalysing}
                   error={analysisError}
                 />
-                
-                {/* Overall Summary */}
-                {analysisData?.overall_summary && (
-                  <div className="mt-6 p-4 border border-gray-300 rounded-md bg-gray-50 shadow-sm">
-                    <h4 className="text-lg font-semibold mb-3 text-gray-800">Overall Analysis</h4>
-                    <div className="whitespace-pre-wrap bg-white p-4 rounded shadow-inner text-sm text-gray-700">
-                      {analysisData.overall_summary}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Effectiveness Analysis per Tone */}
-              <div className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-700 mb-3">Effectiveness Analysis per Tone</h3>
-                {analysisData?.tone_effectiveness && Object.keys(analysisData.tone_effectiveness).length > 0 ? (
-                  <div className="space-y-4">
-                    {TONES.map(tone => (
-                      analysisData.tone_effectiveness[tone.id] && (
-                        <div key={tone.id} className="p-4 border border-gray-300 rounded-md bg-gray-50 shadow-sm">
-                          <h4 className="text-lg font-semibold mb-2 text-gray-800 capitalize">{tone.label} Tone</h4>
-                          <div className="whitespace-pre-wrap bg-white p-3 rounded shadow-inner text-sm text-gray-700">
-                            {analysisData.tone_effectiveness[tone.id]}
-                          </div>
-                        </div>
-                      )
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 italic">Run analysis to see detailed per-tone effectiveness data.</p>
-                )}
-              </div>
-
-              {/* Brand Tone Guidance Improvements */}
-              <div className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-700 mb-3">Brand Tone Guidance Improvements</h3>
-                {analysisData?.improvement_suggestions ? (
-                  <div className="p-4 border border-gray-300 rounded-md bg-gray-50 shadow-sm">
-                    <div className="whitespace-pre-wrap bg-white p-4 rounded shadow-inner text-sm text-gray-700">
-                      {analysisData.improvement_suggestions}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-500 italic">Suggestions for improving brand tone guidance will appear here after analysis.</p>
-                )}
-              </div>
-
-              {/* Revised System Prompt */}
-              <div className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-700 mb-3">Revised System Prompt</h3>
-                {analysisData?.revised_prompt ? (
-                  <div className="p-4 border border-gray-300 rounded-md bg-gray-50 shadow-sm">
-                    <div className="whitespace-pre-wrap bg-white p-4 rounded shadow-inner text-sm text-gray-700 font-mono">
-                      {analysisData.revised_prompt}
-                    </div>
-                    <button 
-                      onClick={() => navigator.clipboard.writeText(analysisData.revised_prompt)}
-                      className="mt-3 px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                    >
-                      Copy Revised Prompt
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-gray-500 italic">A revised system prompt will be generated after analysis.</p>
-                )}
-              </div>
+              {isAnalysing && <p>Analysing prompts, please wait...</p>}
+              {analysisError && <p className="text-red-500">Error during analysis: {analysisError}</p>}
+              {analysisData &&
+                <PromptReviewDisplay
+                    analysis={analysisData}
+                    onApplySuccess={handlePromptDataRefresh} // Pass the handler
+                />}
             </section>
           )}
 
           {activeTab === 'history' && (
             <RewriteHistoryTab onRestoreFromHistory={handleRestoreFromHistory} />
+          )}
+
+          {activeTab === 'promptManagement' && (
+            <PromptManager key={promptDataRefreshKey} />
           )}
         </div>
 
