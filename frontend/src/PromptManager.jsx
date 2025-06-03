@@ -179,14 +179,25 @@ const PromptHistoryView = ({ history, onRefreshHistory }) => {
             <h3>Prompt Change History <button onClick={onRefreshHistory} style={{ marginLeft: '10px', fontSize: '0.8em'}}>Refresh</button></h3>
             {history && history.length > 0 ? (
                 <ul style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                    {history.map(entry => (
-                        <li key={entry.id} style={{ marginBottom: '0.5rem', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>
-                            <strong>{entry.component_type === 'base' ? 'Base Prompt' : `Tone: ${entry.component_name || entry.component_id}`}</strong> ({new Date(entry.created_at).toLocaleString()})
-                            <p><em>Reason:</em> {entry.change_reason || 'N/A'}</p>
-                            {entry.old_content && <p><em>Old:</em> {entry.old_content.substring(0,100)}{entry.old_content.length > 100 && '...'}</p>}
-                            <p><em>New:</em> {entry.new_content.substring(0,100)}{entry.new_content.length > 100 && '...'}</p>
-                        </li>
-                    ))}
+                    {history.map(entry => {
+                        const displayOldContent = entry.old_content != null ?
+                            (typeof entry.old_content === 'string' ?
+                                entry.old_content.substring(0,100) + (entry.old_content.length > 100 ? '...' : '')
+                                : '[Content not displayable]')
+                            : null;
+
+                        const displayNewContent = typeof entry.new_content === 'string' ?
+                            entry.new_content.substring(0,100) + (entry.new_content.length > 100 ? '...' : '')
+                            : (entry.new_content == null ? '[N/A]' : '[Content not displayable]');
+                        return (
+                            <li key={entry.id} style={{ marginBottom: '0.5rem', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>
+                                <strong>{entry.component_type === 'base' ? 'Base Prompt' : `Tone: ${entry.component_name || entry.component_id}`}</strong> ({new Date(entry.created_at).toLocaleString()})
+                                <p><em>Reason:</em> {entry.change_reason || 'N/A'}</p>
+                                {displayOldContent && <p><em>Old:</em> {displayOldContent}</p>}
+                                <p><em>New:</em> {displayNewContent}</p>
+                            </li>
+                        );
+                    })}
                 </ul>
             ) : (
                 <p>No history found or loaded.</p>
