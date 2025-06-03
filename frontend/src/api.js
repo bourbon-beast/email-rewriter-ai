@@ -27,6 +27,139 @@ export const rewriteEmail = async (email, tone) => {
   }
 };
 
+// --- Prompt Management API Functions ---
+
+export const getBasePrompt = async () => {
+  try {
+    const response = await axios.get(`${BASE_API_URL}/prompts/base`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching base prompt:', error);
+    if (error.response) {
+      const errorDetail = error.response.data.detail || error.response.data.error || 'Server error fetching base prompt';
+      throw new Error(errorDetail);
+    } else if (error.request) {
+      throw new Error('No response from server for getBasePrompt. Please check if the backend is running.');
+    } else {
+      throw new Error('Error setting up request for getBasePrompt: ' + error.message);
+    }
+  }
+};
+
+export const updateBasePrompt = async (content, reason) => {
+  try {
+    const response = await axios.put(`${BASE_API_URL}/prompts/base`, { content, reason });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating base prompt:', error);
+    if (error.response) {
+      const errorDetail = error.response.data.detail || error.response.data.error || 'Server error updating base prompt';
+      throw new Error(errorDetail);
+    } else if (error.request) {
+      throw new Error('No response from server for updateBasePrompt. Please check if the backend is running.');
+    } else {
+      throw new Error('Error setting up request for updateBasePrompt: ' + error.message);
+    }
+  }
+};
+
+export const getTones = async () => {
+  try {
+    const response = await axios.get(`${BASE_API_URL}/prompts/tones`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching tones:', error);
+    if (error.response) {
+      const errorDetail = error.response.data.detail || error.response.data.error || 'Server error fetching tones';
+      throw new Error(errorDetail);
+    } else if (error.request) {
+      throw new Error('No response from server for getTones. Please check if the backend is running.');
+    } else {
+      throw new Error('Error setting up request for getTones: ' + error.message);
+    }
+  }
+};
+
+export const updateToneInstructions = async (keyword, instructions, reason) => {
+  try {
+    const response = await axios.put(`${BASE_API_URL}/prompts/tones/${keyword}`, { instructions, reason });
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating tone ${keyword}:`, error);
+    if (error.response) {
+      const errorDetail = error.response.data.detail || error.response.data.error || `Server error updating tone ${keyword}`;
+      throw new Error(errorDetail);
+    } else if (error.request) {
+      throw new Error(`No response from server for updateToneInstructions on tone ${keyword}. Please check if the backend is running.`);
+    } else {
+      throw new Error(`Error setting up request for updateToneInstructions on tone ${keyword}: ` + error.message);
+    }
+  }
+};
+
+export const createTone = async (keyword, label, instructions) => {
+  try {
+    const response = await axios.post(`${BASE_API_URL}/prompts/tones`, { keyword, label, instructions });
+    return response.data; // Expects 201 Created with new tone data
+  } catch (error) {
+    console.error('Error creating tone:', error);
+    if (error.response) {
+      const errorDetail = error.response.data.detail || error.response.data.error || 'Server error creating tone';
+      throw new Error(errorDetail);
+    } else if (error.request) {
+      throw new Error('No response from server for createTone. Please check if the backend is running.');
+    } else {
+      throw new Error('Error setting up request for createTone: ' + error.message);
+    }
+  }
+};
+
+export const getPromptHistory = async () => {
+  try {
+    const response = await axios.get(`${BASE_API_URL}/prompts/history`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching prompt history:', error);
+    if (error.response) {
+      const errorDetail = error.response.data.detail || error.response.data.error || 'Server error fetching prompt history';
+      throw new Error(errorDetail);
+    } else if (error.request) {
+      throw new Error('No response from server for getPromptHistory. Please check if the backend is running.');
+    } else {
+      throw new Error('Error setting up request for getPromptHistory: ' + error.message);
+    }
+  }
+};
+
+export const applySuggestion = async (componentType, componentId, newContent, reason) => {
+  // This endpoint is currently a placeholder in the backend (returns 501 Not Implemented)
+  // The frontend can call it, but should be prepared to handle the 501 error gracefully.
+  try {
+    const response = await axios.post(`${BASE_API_URL}/prompts/apply-suggestion`, {
+      component_type: componentType,
+      component_id: componentId,
+      new_content: newContent,
+      reason: reason
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error applying suggestion:', error);
+    if (error.response) {
+      // Special handling for 501 if needed
+      if (error.response.status === 501) {
+        console.warn('Apply suggestion endpoint is not implemented yet.');
+        // Optionally throw a specific error or return a specific structure indicating not implemented
+      }
+      const errorDetail = error.response.data.detail || error.response.data.error || 'Server error applying suggestion';
+      throw new Error(errorDetail);
+    } else if (error.request) {
+      throw new Error('No response from server for applySuggestion. Please check if the backend is running.');
+    } else {
+      throw new Error('Error setting up request for applySuggestion: ' + error.message);
+    }
+  }
+};
+
 export const getRewriteHistory = async () => {
   try {
     const response = await axios.get(`${BASE_API_URL}/history`);

@@ -91,6 +91,12 @@ class ToneCreateRequest(BaseModel):
     label: str
     instructions: str
 
+class ApplySuggestionRequest(BaseModel):
+    component_type: str         # e.g., 'base' or 'tone'
+    component_id: str           # e.g., 'active_base_prompt' or tone keyword like 'professional'
+    new_content: str
+    reason: str                 # Reason for applying the suggestion
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -286,37 +292,66 @@ async def analyse_prompt(): # Removed req: PromptAnalysisRequest
 {active_base_prompt}
 --- END ACTIVE BASE PROMPT ---
 
-The following are recent examples of email rewrites by another AI (Gemini), grouped by the requested tone.  
-We want to analyze how effective the prompts given to Gemini were in achieving the desired tone and outcome,  
-and how we can improve our overall system (base prompt + per-tone instructions).
+Review the provided active base prompt and the recent email rewrite examples below. We want to improve our prompt system (base prompt + per-tone instructions).
 
 {examples_by_tone_str}
 
 --- Analysis Task for GPT-4 ---
 Based on the provided active base prompt and the examples:
 
-1. For each tone, analyze the effectiveness of the prompts used for Gemini. Were the Gemini responses aligned with the requested tone and the active base prompt?
-2. Suggest specific improvements to the **active base prompt** (provided at the beginning of this request) to make it more effective for overall guidance.
-3. Suggest specific **instructions or modifications for each tone** (professional, friendly, concise, action-oriented) that could be added or updated to improve results for that specific tone when used by Gemini. These tone instructions would be applied *in addition* to the base prompt.
-4. Provide a single, revised, complete **base prompt** that incorporates your suggested improvements for the base prompt (if any) and is ready to use. Do not include per-tone instructions in this revised base prompt.
+1.  **Overall Summary**: Briefly summarize the general effectiveness of the current base prompt and tone instructions across all examples.
+2.  **Tone Effectiveness Analysis**: For each tone (professional, friendly, concise, action-oriented), analyze how well the Gemini responses aligned with the requested tone and the active base prompt. Identify any common misalignments or areas for improvement for each specific tone.
+3.  **Improvement Suggestions (Structured)**: Provide specific, actionable suggestions to improve the prompt system. Format these as a list of JSON objects. Each object in the list should have the following keys:
+    *   `id`: A unique integer for this suggestion (e.g., 1, 2, 3).
+    *   `component_type`: STRING - Either 'base' (for the main base prompt) or 'tone' (for specific tone instructions).
+    *   `component_keyword`: STRING - If `component_type` is 'tone', specify the tone keyword (e.g., 'professional', 'friendly'). If 'base', this can be null or 'active_base_prompt'.
+    *   `suggestion_type`: STRING - Type of suggestion, e.g., 'modification', 'addition', 'clarification', 'removal'.
+    *   `description`: STRING - A clear explanation of the suggestion and why it's needed.
+    *   `current_text_snippet`: STRING (Optional) - A relevant snippet of the current text that the suggestion applies to (e.g., a sentence from the base prompt or a current tone instruction).
+    *   `suggested_replacement_text`: STRING - The suggested new or modified text. For a 'removal', this might be empty or describe what to remove.
+    *   `priority`: STRING - Suggested priority: 'high', 'medium', or 'low'.
+4.  **Revised Base Prompt**: Provide a single, complete, revised **base prompt** that incorporates all your *high-priority* 'base' component suggestions. This revised base prompt should be ready to use. Do not include per-tone instructions in this revised base prompt.
 
-Return your response as **valid JSON** with these exact keys and structure:
+Return your response as **valid JSON** with these exact top-level keys and structure:
 
 {{
-    "overall_summary": "Brief overview of prompt effectiveness across all rewrites",
-    "tone_effectiveness": {{
-        "professional": "Analysis of professional tone effectiveness",
-        "friendly": "Analysis of friendly tone effectiveness", 
-        "concise": "Analysis of concise tone effectiveness",
-        "action-oriented": "Analysis of action-oriented tone effectiveness"
+    "overall_summary": "Your brief overview here.",
+    "tone_effectiveness_analysis": {{
+        "professional": "Your analysis for professional tone...",
+        "friendly": "Your analysis for friendly tone...",
+        "concise": "Your analysis for concise tone...",
+        "action-oriented": "Your analysis for action-oriented tone..."
     }},
-    "improvement_suggestions": "Specific suggestions for improving the current prompt structure (covering both base prompt and per-tone instructions aspects)",
-    "revised_prompt": "A complete, ready-to-use revised **base prompt** with no placeholders that incorporates your improvements."
+    "improvement_suggestions": [
+        {{
+            "id": 1,
+            "component_type": "base",
+            "component_keyword": "active_base_prompt",
+            "suggestion_type": "modification",
+            "description": "Example: Clarify the target audience for more precise language.",
+            "current_text_snippet": "Use clear, confident language...",
+            "suggested_replacement_text": "Use clear, confident language, remembering the target audience is primarily HR professionals.",
+            "priority": "high"
+        }},
+        {{
+            "id": 2,
+            "component_type": "tone",
+            "component_keyword": "friendly",
+            "suggestion_type": "addition",
+            "description": "Example: Add guidance on using emojis for friendly tone.",
+            "current_text_snippet": null,
+            "suggested_replacement_text": "Consider using appropriate positive emojis sparingly to enhance warmth.",
+            "priority": "medium"
+        }}
+        // ... more suggestion objects ...
+    ],
+    "revised_base_prompt": "Your complete revised base prompt text here, incorporating high-priority base suggestions."
 }}
 
-**Important:**  
-- Return only a valid JSON object.  
-- Do not include any markdown formatting, explanations, or surrounding text.
+**Important Reminders:**
+- Ensure the output is a single, valid JSON object.
+- Do not include any markdown formatting (like ```json), comments, or surrounding text outside the main JSON object.
+- For `improvement_suggestions`, provide at least one suggestion, even if it's minor.
 """
 
         # Send this prompt to GPT-4 (Step 6 from plan)
@@ -413,8 +448,45 @@ async def create_tone_endpoint(request: ToneCreateRequest):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"error": str(e)})
 
 @app.post("/prompts/apply-suggestion")
-async def apply_suggestion_endpoint(): # Add request body model if known, else generic for now
-    return JSONResponse(status_code=status.HTTP_501_NOT_IMPLEMENTED, content={"message": "Apply suggestion feature not implemented yet."})
+async def apply_suggestion_endpoint(request: ApplySuggestionRequest):
+    try:
+        if request.component_type == 'base':
+            # For base prompt, component_id might not be strictly needed by db.update_base_prompt
+            # if it always updates the single active one or creates a new active one.
+            # We use 'active_base_prompt' as a convention from the frontend.
+            db.update_base_prompt(content=request.new_content, reason=request.reason)
+            return {"message": "Base prompt updated successfully based on suggestion."}
+
+        elif request.component_type == 'tone':
+            tone_keyword = request.component_id
+            # Check if the tone exists before attempting to update
+            existing_tone = db.get_tone_by_keyword(tone_keyword)
+            if not existing_tone:
+                return JSONResponse(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    content={"error": f"Tone with keyword '{tone_keyword}' not found. Cannot apply suggestion."}
+                )
+            db.update_tone_instructions(keyword=tone_keyword, instructions=request.new_content, reason=request.reason)
+            return {"message": f"Tone '{tone_keyword}' updated successfully based on suggestion."}
+
+        else:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": f"Invalid component_type: {request.component_type}. Must be 'base' or 'tone'."}
+            )
+
+    except Exception as e:
+        print(f"Error applying suggestion: {e}") # Log the full error server-side
+        # Check if e has specific attributes like e.detail for more specific client messages
+        error_message = str(e)
+        # Attempt to get a more specific message if it's a custom exception or has 'detail'
+        if hasattr(e, 'detail'):
+             error_message = e.detail
+
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"error": f"Failed to apply suggestion: {error_message}"}
+        )
 
 if __name__ == "__main__":
     uvicorn.run("backend.app_fastapi:app", host="0.0.0.0", port=8000, reload=True)
